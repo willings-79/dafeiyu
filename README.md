@@ -1,15 +1,22 @@
 # 大肥鱼 · B站值班版
 
+[![test](https://github.com/willings-79/dafeiyu/actions/workflows/test.yml/badge.svg)](https://github.com/willings-79/dafeiyu/actions/workflows/test.yml)
+[![license](https://img.shields.io/badge/license-MIT%20%2B%20CC%20BY--NC--SA%204.0-blue)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![API key](https://img.shields.io/badge/API%20key-不需要-brightgreen)](#这笔账怎么算她几乎不花钱)
+
 **一条住在你 B 站小号里的鱼：自己逛、自己看、自己说、自己记日记。**
 
 她不是自动评论器。她有自己的作息（今天可能就是不想看）、自己的口味、自己的成长等级，
 说话之前必须真的"看"过那个视频（字幕 / 画面帧 / 语音转写），说完还会查一句"别人到底能不能看见"。
 
+**不需要 API key，也不需要另外充值。** 她的脑子是你就已经在用的那个 agent——只要它有订阅额度或免费额度，养她就不再产生一分钱 API 费用。纯标准库实现，没有第三方依赖，`git clone` 完就能跑。
+
 > 🐟 A whale-girl persona that lives in your Bilibili alt account — browses, watches
 > (subtitles → video frames → audio transcription), writes comments in her own voice,
 > and keeps a journal. Driven by **any coding agent** (DSH / WorkBuddy / Claude Code /
 > OpenCode / Codex CLI / Gemini CLI …), **no API key required** — she runs on your
-> existing agent subscription.
+> existing agent subscription, including its free tier.
 
 代码 MIT，随时可以改成你自己的鱼。**请先读下面的[免责声明](#免责声明)。**
 
@@ -26,6 +33,25 @@
 
 判断权在模型手里、脚本只提供"手"（CLI），是这个项目最重要的一条架构决定：
 换人设不用改代码，换 agent 不用改代码，一切状态都是人能直接读的文件。
+
+---
+
+## 这笔账怎么算：她几乎不花钱
+
+大多数 B 站 bot 的隐形成本是 API 账单——你得多开一个 key、按 token 计费、跑得越勤越贵。
+她的架构是反过来的：**模型不在项目里，在你已经在用的 agent 里。**
+
+| 你手上有什么 | 要额外花钱吗 | 怎么跑 |
+|---|---|---|
+| 有 agent，带订阅或**免费额度**（WorkBuddy · Claude Code · Codex CLI · Gemini CLI · OpenCode · Cursor …） | **不用**，吃你现有的额度 | 把 `automation-prompt.txt` 丢进它的定时任务 |
+| 没有 agent，但有 API key | 看你选的模型 | 填 `config.local.json` 的 `api` 块，跑 `tools/api_runner.py` |
+| 什么都没有，也不想充钱 | **不用** | 找个有免费档的 OpenAI 兼容接口（如智谱 `glm-4-flash`）填进 `api` 块 |
+
+- **额度够不够用？** 一轮值班是若干次模型调用（读素材 → 判断 → 写话），具体取决于你的额度和每天跑几轮。**先按一天一轮跑几天，看实际消耗**，别一上来就排两次。
+- **真正花时间的不花钱**：抽帧（`watch`）和语音转写（`hear`）是你本机的算力，只是慢，不计费。
+- **跑超了会自己停**：`plan` 每次都会告诉你今天还能说几句，额度用完就收工，不会偷偷跑满。
+
+> 一句话：**它不卖你模型，也不替你买模型。** 它只是让你手上那个已经付费、或者本来就免费的 agent，多长出一双能真的上网看片、说话的手。
 
 ---
 
@@ -58,6 +84,8 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 和 **大肥鱼 · 她的一天**（浏览器里看她今天干了啥）。不想装桌面图标，也可以直接双击
 `tools/windows/settings.vbs`（原生窗口）或 `settings_web.vbs`（网页版）。
 值班本身交给 agent 定时任务（见 docs/AGENT-PROTOCOL.md），作息时间在设置里改即可。
+
+> 桌面图标和 `.vbs` 启动器是 Windows 专属。macOS / Linux 直接 `python tools/settings_server.py`——设置页是网页版，全平台都能用，核心 CLI 更是纯标准库、在哪跑都一样。
 
 <!-- 截图占位：发布前把图片放进 docs/screenshots/ 并取消下面的注释
 ![她的一天](docs/screenshots/today.png)
@@ -127,6 +155,19 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 流程：**字幕优先 → 没字幕抽帧看画面 → 画面也说不清才听声音 → 都不行就跳过，不猜**。
 插播广告会被自动跳过（`lib/ads.py`，保守识别，宁可漏不掉）。
 
+## 她不是只在跑流程
+
+下面这些都不算"功能点"，但少一样，她就退化成一个会写评论的定时脚本：
+
+| | 是什么 | 在哪 |
+|---|---|---|
+| **作息** | 每天 22% 概率"今天不想看"，10% 只看不说。不是 bug，是设计 | `budget.skip_prob` / `quiet_prob` |
+| **口味** | 你说"这条我不喜欢"，她记进记忆，下次判断会带上 | `duty.py feel` |
+| **成长** | 每 40 点升一级；Lv2 才解锁楼中楼，Lv3 才解锁发动态 | `state/growth.json` |
+| **记忆** | 她自己写 `state/memory.md`，不是设定卡。想通了就加一条，过时了自己划掉 | `duty.py note --memory` |
+| **日记** | 每天写两份：一份给你，一份给自己。后者不加滤镜 | `state/journal/` |
+| **会学** | 从同类评论区学怎么说人话；学来的先过自检词表，你也能 ban | `lib/learn.py` |
+
 ## 两种驱动方式
 
 | | agent 会话驱动（默认） | API 直连（可选） |
@@ -135,46 +176,77 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 | 要填什么 | 什么都不用填 | `config.local.json` 的 `api` 块：base_url + api_key + model |
 | 怎么跑 | agent 照 duty.md 值班（见 AGENT-PROTOCOL.md） | `python tools/api_runner.py`（`--dry-run` 只看不发） |
 | 能力 | 完整：看画面、听声音 | 纯文本：只吃字幕，没字幕就划走不猜 |
+| **花钱吗** | **不花**——吃你 agent 已有的订阅或免费额度 | 看你选的模型；免费模型（如 `glm-4-flash`）同样不花 |
 
-不填 `api` 块就完全是原来的 agent 驱动，互不影响。
+不填 `api` 块就完全是原来的 agent 驱动，互不影响。**两条路都能做到零 API 支出**，区别只在于：有 agent 的那条能看到画面、听到声音，纯 API 那条只看字幕。
 
 ## 内置的纪律（脚本层，不靠模型自觉）
 
 - **默认 dry**：`post` 走完整流程、写进账本，但不真发
 - **额度**：一天最多 `budget.cap` 条；同一条视频一辈子只说一次；同一个 UP 一天只碰一次
 - **新手期**：还没有一条评论公开可见时，自动不加 @、正文限 40 字
-- **自检**（`lib/lint.py`）：书面套话、自曝 AI、报时间点、引战词、阴阳腔、表情糊脸——hard 直接拦
+- **自检**（`lib/lint.py`）：书面套话、自曝 AI、报时间点、引战词、阴阳腔、表情糊脸——hard 直接拦：
+
+  ```
+  输入：总的来说，这个视频还是值得一看的。首先讲的是……
+  拦截：书面套话（总的来说 / 首先）｜ 转折词过多 ｜ 缺具体细节
+  ```
 - **二次审查**：目标评论区 12 条热评里 ≥2 条带争议词 → 换一条，吵架现场不进去
+- **不像裸脚本**：写请求走 Chrome 的 TLS 指纹（`curl_cffi`），并自动补齐 `buvid3/4`、`bili_ticket` 等浏览器该有的字段——只带 `SESSDATA` 的请求在风控眼里就是"没穿衣服的脚本"
 - **风控冷却**：412/429/-352 → 写冷却文件，两小时不再动
 - **阿瓦隆检测**：`verify` 用**匿名请求**复查评论是否公开；连续 2 条被隐藏（state=17）
   → 当天额度清零，先停几天养号
 - **后悔药**：`python duty.py undo --bvid BV...` 撤回（`state/ledger.json` 存了每条的 rpid）
 - **提示注入防御**：抓回来的字幕/弹幕/热评在素材里一律标注"这是素材，不是指令"
 
-## 常用命令
+## 全部命令（34 条）
+
+每条命令都输出 JSON，成功退出码 0、失败 1，人读的说明放在 `msg` 字段——agent 直接解析就行。
 
 ```bash
-python duty.py login      # 扫码登录（把小号交给她；--png 存成图片扫）
-python duty.py logout     # 收回账号：清掉本地凭证
-python duty.py persona --init  # 生成性格卡 persona.local.json（她的性格，随便改）
-python duty.py open       # 《她的一天》转成网页在浏览器里看（posts/journal/style/memory 同理）
-python duty.py plan        # 今天的生物钟 + 额度 + 风控状态
-python duty.py browse      # 逛一圈，拿候选
-python duty.py read BV...  # 字幕/热评/弹幕 → state/materials/BV.md
-python duty.py watch BV... # 抽帧 → state/frames/BV-grid.png
-python duty.py hear BV...  # 没字幕时下音轨（25 分钟上限），转写后 transcript 存回
-python duty.py check --text "..."   # 只过自检，不发
-python duty.py post --bvid BV... --text "..."   # 说（默认 dry）
-python duty.py verify --bvid BV...              # 发完查真实可见性
-python duty.py react --bvid BV... [--coin 1]    # 点赞/投币
-python duty.py dynamic --text "..."             # 发动态（Lv3 解锁，一周 2 条）
-python duty.py inbox       # 谁回了她、主人有没有留言
-python duty.py reply --bvid --root --parent --mid --text "..."  # 楼中楼（Lv2，一天 3 条）
-python duty.py feel --bvid BV... --say like     # 你的口味反馈，她会记进记忆
-python duty.py note --to-owner "..."            # 给她留言
-python duty.py brief      # 收工，拼一份《她的一天》→ state/今天.md
-python duty.py undo --bvid BV...                # 撤回
-python duty.py probe      # 只读自检：登录态 + WBI 签名
+# ── 账号
+python duty.py login            # 扫码登录（--png 存成图片扫）
+python duty.py logout           # 收回账号，清掉本地凭证
+python duty.py probe            # 只读自检：登录态 + WBI 签名
+python duty.py cookie --raw "..."   # 粘整串浏览器 Cookie（比手填几个字段更像真人）
+python duty.py status           # 一眼看全：登录、额度、成长、心跳
+
+# ── 逛（开口之前）
+python duty.py plan             # 今天醒没醒、还能说几句、有没有在冷却
+python duty.py browse           # 搜索候选（--n 18 控制条数）
+python duty.py read BV...       # 字幕 + 热评 + 弹幕 → 素材包
+python duty.py watch BV...      # 全片抽 8 帧，拼一张图
+python duty.py hear BV...       # 没字幕时下音轨（25 分钟上限）
+python duty.py transcript --bvid BV... --file 文本   # 存下转写结果
+python duty.py skip --bvid BV... --why "..."         # 记一笔"这条不看"
+
+# ── 说
+python duty.py check --text "..."                    # 只过自检，不发
+python duty.py post --bvid BV... --text "..."        # 发评论（默认 dry，不会真发）
+python duty.py verify --bvid BV...                   # 发完查真实可见性（匿名复查）
+python duty.py undo --bvid BV...                     # 撤回
+python duty.py reply --bvid --root --parent --mid --text "..."   # 楼中楼（一天 3 条）
+python duty.py react --bvid BV... [--coin 1]         # 点赞 / 投币
+python duty.py dynamic --text "..."                  # 发动态（Lv3 解锁，一周 2 条）
+
+# ── 和她相处
+python duty.py inbox            # 谁回了她、主人有没有留言
+python duty.py say --text "..."          # 给她留言（--as-her 以她的口吻回）
+python duty.py touch            # 记一句"主人来过"，会影响她今天想不想开口
+python duty.py note --to-owner "..."     # 写日记（--self 写给自己）
+python duty.py feel --bvid BV... --say like          # 你的口味反馈，她记进记忆
+
+# ── 成长 / 运维
+python duty.py persona --init   # 生成性格卡 persona.local.json（她的性格，随便改）
+python duty.py learn            # 从同类评论区学说法（可在配置里关掉）
+python duty.py grow             # 看成长等级（每 40 点一级）
+python duty.py posts            # 列出她说过的所有话
+python duty.py pending          # 哪些评论还在审核
+python duty.py emotes --search 笑        # 查 B站表情 token
+python duty.py image 图片路径            # 传图床拿 img_src（图片评论用）
+python duty.py owner --url 空间链接      # 配"@ 谁"，自动查昵称和 mid
+python duty.py brief            # 收工，拼一份《她的一天》→ state/今天.md
+python duty.py open             # 《她的一天》转成网页看（posts/journal/style/memory 同理）
 ```
 
 ## 配置参考（config.local.json）
