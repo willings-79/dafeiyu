@@ -97,10 +97,6 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 <img src="docs/screenshots/journal.png" width="820" alt="她写的日记">
 
 *每天写两份：一份给主人，一份给自己。后者不加滤镜，也不打算解决。*
-
-<img src="docs/screenshots/settings.png" width="600" alt="设置页">
-
-*四个标签：账号 / 性格 / 偏好 / 作息。改完即存，不用碰 JSON。*
 ### 1. 装好
 
 ```bash
