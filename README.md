@@ -68,7 +68,7 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 ### 1. 装好
 
 ```bash
-git clone https://github.com/willings-79/dafeiyu.git   # 发布时替换成真实地址
+git clone https://github.com/willings-79/dafeiyu.git
 cd dafeiyu
 pip install -r requirements.txt        # qrcode（扫码登录）+ curl_cffi（强烈建议）
 # 可选：装 yt-dlp + ffmpeg 才能抽帧看画面、下音轨转写
