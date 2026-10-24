@@ -191,6 +191,7 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 | **日记** | 每天写两份：一份给你，一份给自己。后者不加滤镜 | `state/journal/` |
 | **学说话** | 翻同类视频的评论区，学活人怎么接话；学来的先过自检词表，你也能 ban 掉 | `lib/learn.py` |
 | **手不闲着** | 看到真好的是会点赞、投币的——不是留一句话就走 | `duty.py react` |
+| **会发动态** | 不是日报。节日、纪念日，或者哪天跟你聊得特别好、特别堵，才发一条（Lv3 解锁，一周最多两条） | `duty.py dynamic` |
 
 ## 两种驱动方式
 
@@ -222,8 +223,9 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
   → 当天额度清零，先停几天养号
 - **后悔药**：`python duty.py undo --bvid BV...` 撤回（`state/ledger.json` 存了每条的 rpid）
 - **提示注入防御**：抓回来的字幕/弹幕/热评在素材里一律标注"这是素材，不是指令"
+- **不会把硬盘吃满**：抽帧图和音轨默认只留 `retention_days`（60 天），每次 `plan` 顺手清超期的；**字幕原文、日记、聊天、账本一律不碰**——那是她记得的东西，不是缓存
 
-## 全部命令（34 条）
+## 全部命令（35 条）
 
 每条命令都输出 JSON，成功退出码 0、失败 1，人读的说明放在 `msg` 字段——agent 直接解析就行。
 
@@ -251,7 +253,7 @@ python duty.py verify --bvid BV...                   # 发完查真实可见性�
 python duty.py undo --bvid BV...                     # 撤回
 python duty.py reply --bvid --root --parent --mid --text "..."   # 楼中楼（一天 3 条）
 python duty.py react --bvid BV... [--coin 1]         # 点赞 / 投币
-python duty.py dynamic --text "..."                  # 发动态（Lv3 解锁，一周 2 条）
+python duty.py dynamic --text "..."                  # 发动态（Lv3，一周 2 条；节日/纪念日/特别想说才发）
 
 # ── 和她相处
 python duty.py inbox            # 谁回了她、主人有没有留言
@@ -271,6 +273,7 @@ python duty.py image 图片路径            # 传图床拿 img_src（图片评�
 python duty.py owner --url 空间链接      # 配"@ 谁"，自动查昵称和 mid
 python duty.py brief            # 收工，拼一份《她的一天》→ state/今天.md
 python duty.py open             # 《她的一天》转成网页看（posts/journal/style/memory 同理）
+python duty.py clean --dry-run  # 清过期抽帧和音轨（默认留 60 天；`0` = 永不清理）
 ```
 
 ## 配置参考（config.local.json）
@@ -291,6 +294,7 @@ python duty.py open             # 《她的一天》转成网页看（posts/jour
 | `reply_cap` | `3` | 每天最多回几条楼中楼；`-1` = 不限量（同一个人一天仍只回一次） |
 | `learn` | `true` | 要不要跟评论区同类学说话；`false` 关掉后 `duty.py learn` 直接跳过 |
 | `dynamic_per_week` / `dynamic_level` | `2` / `3` | 动态：一周上限、解锁等级 |
+| `retention_days` | `60` | 抽帧图和音轨保留几天，超期自动清；`0` = 永不清理。字幕原文和日记不受影响 |
 | `at_owner` / `owner_mid` / `owner_nick` | — | @ 主人：`python duty.py owner --url 空间链接` 自动配。默认不 @，她觉得值得才 @，一天最多一次 |
 
 ## 你也能塑造她

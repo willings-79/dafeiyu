@@ -29,6 +29,7 @@
   "dynamic_per_week": 2,
   "dynamic_level": 3,
   "warmup_chars": 40,
+  "retention_days": 60,
 
   "api": {
     "_说明": "可选。默认不需要——她由你的 agent 会话驱动（订阅额度，零 API 费用）。如果只有 API key 没有 agent，把下面三个填上就能脱离 agent 直接跑：python tools/api_runner.py。DeepSeek/智谱/Kimi 等有免费额度的 OpenAI 兼容接口都行。三个字段都非空才启用，留空完全不影响原来的用法。",

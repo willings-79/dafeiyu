@@ -213,6 +213,59 @@ def conf():
     return c
 
 
+MEDIA_KEEP = {
+    "frames": (".png", ".json", ".mp4", ".part"),
+    "audio": (".m4a", ".mp3", ".wav", ".part"),
+}
+
+
+def cleanup_expired(days=None, dry_run=False):
+    """清掉过期的抽帧图和音轨，免得 `state/` 越跑越大。
+
+    只动 frames/ 和 audio/ 里的媒体文件——**materials（字幕原文）、
+    日记、聊天、账本一律不碰**，那些是她记得的东西，不是缓存。
+    """
+    c = conf()
+    if days is None:
+        days = c.get("retention_days", 60)
+    try:
+        days = max(0, int(days))
+    except (TypeError, ValueError):
+        days = 60
+    if days == 0:
+        return {"days": 0, "files": 0, "bytes": 0, "mb": 0,
+                "removed": [], "note": "不自动清理"}
+
+    cutoff = time.time() - days * 86400
+    removed, errors, total = [], [], 0
+    for name, exts in MEDIA_KEEP.items():
+        folder = FRAMES if name == "frames" else AUDIO
+        if not os.path.isdir(folder):
+            continue
+        for fn in os.listdir(folder):
+            if not fn.lower().endswith(exts):
+                continue
+            p = os.path.join(folder, fn)
+            try:
+                if os.path.islink(p) or not os.path.isfile(p):
+                    continue
+                if os.path.getmtime(p) >= cutoff:
+                    continue
+                size = os.path.getsize(p)
+                if not dry_run:
+                    os.remove(p)
+                total += size
+                removed.append(p)
+            except OSError as exc:
+                errors.append("%s: %s" % (p, exc))
+    if removed and not dry_run:
+        log("[clean] 清掉 %d 个超过 %d 天的媒体文件，释放 %.1f MB"
+            % (len(removed), days, total / 1048576))
+    return {"days": days, "files": len(removed), "bytes": total,
+            "mb": round(total / 1048576, 2), "removed": removed[:30],
+            "errors": errors, "dry_run": bool(dry_run)}
+
+
 def ledger():
     led = load(LEDGER, {})
     led.setdefault("posts", [])
@@ -578,6 +631,10 @@ def _unread_owner():
 def cmd_plan(a):
     c = conf()
     try:
+        cleaned = cleanup_expired(c.get("retention_days", 60))
+    except Exception as exc:
+        cleaned = {"files": 0, "mb": 0, "errors": [str(exc)]}
+    try:
         bili.ensure_fingerprint()
     except Exception:
         pass
@@ -618,6 +675,8 @@ def cmd_plan(a):
         "date": today(),
         "now": time.strftime("%H:%M"),
         "mode": c["mode"],
+        "retention_days": int(c.get("retention_days", 60)),
+        "cleaned": {"files": cleaned.get("files", 0), "mb": cleaned.get("mb", 0)},
         "fingerprint": {"buvid4": bool(c.get("buvid4")),
                         "ticket": bool(c.get("bili_ticket")),
                         "mid": bool(c.get("DedeUserID"))},
@@ -1917,6 +1976,15 @@ def cmd_open(a):
 
 # ---------------------------------------------------------------- status / probe
 
+def cmd_clean(a):
+    """手动清过期媒体；--dry-run 只看会删什么。"""
+    r = cleanup_expired(a.days, dry_run=a.dry_run)
+    out({"ok": True, **r,
+         "msg": ("会删 %d 个文件，共 %.2f MB（演练，没动）" % (r["files"], r["mb"]))
+                if r.get("dry_run") else
+                ("删了 %d 个文件，释放 %.2f MB" % (r["files"], r["mb"]))})
+
+
 def cmd_status(a):
     c = conf()
     led = ledger()
@@ -2028,6 +2096,8 @@ def main():
                                                help="today / posts / journal / style / memory")
     sub.add_parser("status")
     sub.add_parser("probe")
+    p = sub.add_parser("clean"); p.add_argument("--days", type=int, default=None)
+    p.add_argument("--dry-run", action="store_true")
 
     a = ap.parse_args()
     fn = {
@@ -2035,6 +2105,7 @@ def main():
         "hear": cmd_hear, "transcript": cmd_transcript,
         "post": cmd_post, "undo": cmd_undo, "skip": cmd_skip, "note": cmd_note,
         "touch": cmd_touch, "status": cmd_status, "probe": cmd_probe,
+        "clean": cmd_clean,
         "owner": cmd_owner, "brief": cmd_brief, "feel": cmd_feel, "verify": cmd_verify,
         "say": cmd_say, "inbox": cmd_inbox, "reply": cmd_reply,
         "emotes": cmd_emotes, "pending": cmd_pending, "image": cmd_image,
