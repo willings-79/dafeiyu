@@ -87,12 +87,17 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 
 > 桌面图标和 `.vbs` 启动器是 Windows 专属。macOS / Linux 直接 `python tools/settings_server.py`——设置页是网页版，全平台都能用，核心 CLI 更是纯标准库、在哪跑都一样。
 
-<!-- 截图占位：发布前把图片放进 docs/screenshots/ 并取消下面的注释
-![她的一天](docs/screenshots/today.png)
-![原生设置窗口](docs/screenshots/app.png)
-![设置网页版](docs/screenshots/web.png)
--->
+<img src="docs/screenshots/today.png" width="820" alt="她的一天">
 
+*她的一天：逛了 9 条，每条都标着字幕行数；最后只说 2 条。没说的那些，都在日记里。*
+
+<img src="docs/screenshots/journal.png" width="820" alt="她写的日记">
+
+*每天写两份：一份给主人，一份给自己。后者不加滤镜，也不打算解决。*
+
+<img src="docs/screenshots/settings.png" width="600" alt="设置页">
+
+*四个标签：账号 / 性格 / 偏好 / 作息。改完即存，不用碰 JSON。*
 ### 1. 装好
 
 ```bash
