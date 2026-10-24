@@ -1,0 +1,23 @@
+# 凭证与个人配置——绝对不能进仓库
+config.local.json
+persona.local.json
+
+# 她的状态（日记/账本/记忆/素材）都是本地隐私
+state/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 杂项
+*.log
+*.lnk
+.DS_Store
+Thumbs.db
+
+# 本机工具的会话状态，不属于项目
+.mimosa/
+.zcode/

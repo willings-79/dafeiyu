@@ -1,0 +1,39 @@
+{
+  "_说明": "复制这份文件为 config.local.json 再填。带 ★ 的是必填；其余都有默认值，不写也行。字段含义见 README 的「配置参考」。",
+
+  "mode": "dry",
+  "at_owner": true,
+
+  "SESSDATA": "",
+  "bili_jct": "",
+  "COOKIE_RAW": "",
+
+  "keywords": ["DeepSeek", "智能体", "大模型", "AI", "Claude", "开源", "科普", "大肥鱼", "DSH", "dsh", "ai", "gpt"],
+  "negative_keywords": ["时政", "政局", "逝世", "讣告", "坍塌", "遇难", "战争", "制裁", "历史", "舞蹈", "写真", "穿搭", "挑战", "vlog", "Vlog", "VLOG", "探店", "街头采访", "素人", "翻车", "社死", "跳舞", "宅舞", "游戏实况", "开箱", "Reaction", "reaction", "试吃", "开箱测评", "整活", "ACE", "WeGame", "wegame", "王者", "吃鸡", "反作弊", "外挂", "加速器", "鬼畜", "音MAD", "吃播", "烘焙", "原始社会", "大山", "农村", "明日方舟"],
+
+  "budget": {
+    "cap": 1,
+    "interval_min": 45,
+    "skip_prob": 0.22,
+    "quiet_prob": 0.10,
+    "view_floor": 3000,
+    "view_ceil": 1500000,
+    "dur_min": 60,
+    "dur_max": 1200,
+    "fresh_days": 14,
+    "seen_days": 14
+  },
+
+  "reply_cap": 3,
+  "learn": true,
+  "dynamic_per_week": 2,
+  "dynamic_level": 3,
+  "warmup_chars": 40,
+
+  "api": {
+    "_说明": "可选。默认不需要——她由你的 agent 会话驱动（订阅额度，零 API 费用）。如果只有 API key 没有 agent，把下面三个填上就能脱离 agent 直接跑：python tools/api_runner.py。DeepSeek/智谱/Kimi 等有免费额度的 OpenAI 兼容接口都行。三个字段都非空才启用，留空完全不影响原来的用法。",
+    "base_url": "",
+    "api_key": "",
+    "model": ""
+  }
+}

@@ -1,0 +1,18 @@
+# Only stdlib is required to run. Everything below is optional but recommended.
+# (Comments in English on purpose: pip on zh-CN Windows decodes this file as GBK.)
+
+# qrcode -- renders the login QR for `python duty.py login`
+qrcode>=7
+
+# certifi -- pinned CA bundle; immune to broken system cert setups
+# (the usual cause of CERTIFICATE_VERIFY_FAILED on zh-CN Windows)
+certifi
+
+# curl_cffi -- sends write requests (posting comments) with Chrome's TLS fingerprint.
+# Without it things still run, but comments are far more likely to get
+# shadow-hidden by Avalon (state=17).
+curl_cffi>=0.7
+
+# System tools (not pip): yt-dlp + ffmpeg are needed for `watch` (video frames)
+# and `hear` (audio). `pip install yt-dlp`, and make sure ffmpeg is on PATH.
+# Without them `read` (subtitles/comments/danmaku) still works fine.

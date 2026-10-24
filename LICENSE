@@ -1,0 +1,33 @@
+MIT License
+
+Copyright (c) 2026 dafeiyu contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------
+
+例外条款（针对 assets/ 目录下的形象资产与 persona.md 人设文件）：
+
+代码以 MIT 授权。但 assets/ 里的鲸鱼娘形象图与 persona.md 描述的角色设定
+是社区角色"大肥鱼"的二创，原角色遵循 CC BY-NC-SA 4.0：
+  - "溟月" 原创角色：B站 UP 主「上善无形」
+  - DeepSeek 元素融合版"大肥鱼"：B站 UP 主「ZipZipPipe」
+使用、修改、分发这些内容时请同样遵循 CC BY-NC-SA 4.0（署名-非商业-相同方式共享），
+并保留对本目录 EXCEPTION 的说明。你完全可以换成自己写的 persona.md 与图标，
+那样你的衍生版本只受 MIT 约束。
