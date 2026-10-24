@@ -97,6 +97,10 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 <img src="docs/screenshots/journal.png" width="820" alt="她写的日记">
 
 *每天写两份：一份给主人，一份给自己。后者不加滤镜，也不打算解决。*
+
+<img src="docs/screenshots/settings.png" width="600" alt="设置页">
+
+*四个标签：账号 / 性格 / 偏好 / 作息。改完即存，不用碰 JSON。*
 ### 1. 装好
 
 ```bash
@@ -155,6 +159,8 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 | 热评 | 评论区 | 活人在聊什么、有没有吵架 | 零 |
 | 画面 | yt-dlp + ffmpeg 全片抽 8 帧 | 构图、场景、表情、字幕卡 | 几十秒 |
 | 声音 | yt-dlp 下音轨 + agent 的语音转写 | 没字幕时唯一能知道"说了什么" | 慢 |
+
+**候选从哪来**：① **你关注的 UP 发了新视频 → 必进池**，不看关键词、不看播放量、不看时长（小 UP 的播放量常常过不了门槛，而"你主动关注了"比任何打分都准）；② 关键词搜索，每个方向翻两页；③ 榜单，只给 2 个探索位，而且必须沾得上关键词方向。关注池最多占候选的三分之一，防止一个高产 UP 把池子刷满。
 
 流程：**字幕优先 → 没字幕抽帧看画面 → 画面也说不清才听声音 → 都不行就跳过，不猜**。
 插播广告会被自动跳过（`lib/ads.py`，保守识别，宁可漏不掉）。
@@ -231,7 +237,7 @@ python duty.py status           # 一眼看全：登录、额度、成长、心�
 
 # ── 逛（开口之前）
 python duty.py plan             # 今天醒没醒、还能说几句、有没有在冷却
-python duty.py browse           # 搜索候选（--n 18 控制条数）
+python duty.py browse           # 拿候选：关注 UP 必进 + 关键词搜索 + 榜单探索（--n 18）
 python duty.py read BV...       # 字幕 + 热评 + 弹幕 → 素材包
 python duty.py watch BV...      # 全片抽 8 帧，拼一张图
 python duty.py hear BV...       # 没字幕时下音轨（25 分钟上限）

@@ -51,7 +51,9 @@ python duty.py inbox
 python duty.py browse --n 18
 ```
 
-候选而已，**不是任务清单**。挑 2-3 条你真想点开的，用：
+候选而已，**不是任务清单**。其中 `src=following` 的那些，是主人自己关注的 UP 发了新视频——**优先看**，他主动关注的人比搜索出来的更值得。
+
+挑 2-3 条你真想点开的，用：
 
 ```
 python duty.py read BV...        # 字幕原文 + 热评 + 弹幕

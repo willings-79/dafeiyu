@@ -279,6 +279,67 @@ def ranking(limit=60):
     return [x for x in out if x["bvid"]]
 
 
+def following_videos(pages=2):
+    """已关注 UP 的视频动态。一次请求拿关注流，不逐个 UP 打空间接口。
+
+    只取 DYNAMIC_TYPE_AV（投稿转发的视频卡片），返回精简条目。
+    翻页靠接口给的 offset；重复 offset 或空页就停。
+    """
+    out, seen, offset = [], set(), ""
+    for pn in range(1, max(1, pages) + 1):
+        p = {"type": "video", "page": pn}
+        if offset:
+            p["offset"] = offset
+        d = get("/x/polymer/web-dynamic/v1/feed/all", p)
+        if d.get("code") != 0:
+            if pn == 1:
+                raise RuntimeError("following code=%s %s" % (d.get("code"), d.get("message")))
+            break
+        data = d.get("data") or {}
+        items = data.get("items") or []
+        if not items:
+            break
+        for x in items:
+            if x.get("type") != "DYNAMIC_TYPE_AV":
+                continue
+            mods = x.get("modules") or {}
+            ar = (((mods.get("module_dynamic") or {}).get("major") or {})
+                  .get("archive") or {})
+            au = mods.get("module_author") or {}
+            bvid = ar.get("bvid")
+            if not bvid or bvid in seen:
+                continue
+            st = ar.get("stat") or {}
+            try:
+                view = int(st.get("play") or 0)
+            except (TypeError, ValueError):
+                view = 0
+            try:
+                pub_ts = int(au.get("pub_ts") or 0)
+            except (TypeError, ValueError):
+                pub_ts = 0
+            seen.add(bvid)
+            out.append({
+                "bvid": bvid,
+                "title": _clean(ar.get("title")),
+                "owner": _clean(au.get("name")),
+                "mid": au.get("mid"),
+                "view": view,
+                "reply": 0,
+                "duration": _secs(ar.get("duration_text")),
+                "pubdate": pub_ts,
+                "desc": _clean(ar.get("desc")),
+                "cover": ar.get("cover") or "",
+                "src": "following",
+                "why": "关注了 %s" % _clean(au.get("name") or "的 UP"),
+            })
+        nxt = str(data.get("offset") or "")
+        if not nxt or nxt == offset:
+            break
+        offset = nxt
+    return out
+
+
 def popular(pages=2):
     out = []
     for pn in range(1, pages + 1):

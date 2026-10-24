@@ -668,6 +668,13 @@ def cmd_browse(a):
     blocked = set(led.get("blocked") or {})
 
     items, errs = [], []
+    following = []
+    try:
+        following = bili.following_videos(pages=2)
+    except Exception as exc:
+        errs.append("关注动态：%s" % exc)
+    following.sort(key=lambda x: x.get("pubdate") or 0, reverse=True)
+
     kws = [k.strip() for k in (a.keywords.split(",") if a.keywords else c["keywords"]) if k.strip()]
     for kw in kws[:6]:
         for pn in (1, 2):                  # 每题翻两页：候选池太浅，她会说"今天没一条想看"
@@ -715,6 +722,11 @@ def cmd_browse(a):
         it["_hits"] = [str(h[0]).split("|")[0].split("｜")[0] for h in hits]
         return hits
 
+    def negative(it):
+        hay = " ".join([it.get("title") or "", it.get("desc") or "",
+                        " ".join(it.get("_tags") or [])]).lower()
+        return any(n and n in hay for n in negs)
+
     def keep(it):
         if not it.get("bvid"):
             return False
@@ -724,11 +736,34 @@ def cmd_browse(a):
             return False
         if not _fresh(it.get("pubdate"), b["fresh_days"]):
             return False
-        hay = " ".join([it.get("title") or "", " ".join(it.get("_tags") or [])]).lower()
-        return not any(n and n in hay for n in negs)
+        return not negative(it)
 
     picked, dedupe = [], set()
     dropped = 0
+
+    # 关注 UP 的新视频必进池：排在搜索前面，不受关键词 / 播放量 / 时长 / 新鲜度门槛影响
+    # （小 UP 的播放量常常过不了 view_floor，而"你主动关注了"比任何打分都准）。
+    # 每个 UP 只取最新一条未看的，总数不超过候选量的三分之一——别让一个高产 UP 刷满候选池。
+    follow_cap = max(3, max(1, a.n) // 3)
+    following_n = 0
+    up_seen = set()
+    for it in following:
+        if following_n >= follow_cap:
+            break
+        bv = it.get("bvid")
+        if not bv or bv in seen or bv in blocked or bv in dedupe:
+            continue
+        enrich(it)
+        if negative(it):
+            continue
+        who = it.get("mid") or it.get("owner") or ""
+        if who in up_seen:
+            continue
+        up_seen.add(who)
+        dedupe.add(bv)
+        picked.append(it)
+        following_n += 1
+
     for it in items:                      # 搜索：保持相关性顺序
         bv = it.get("bvid")
         if bv in seen or bv in blocked or bv in dedupe:
@@ -772,6 +807,7 @@ def cmd_browse(a):
             continue
         final.append(it)
     picked = final
+    following_n = sum(1 for it in picked if it.get("src") == "following")
 
     for it in picked:
         led["seen"].setdefault(it["bvid"], {"time": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -780,6 +816,7 @@ def cmd_browse(a):
 
     out({
         "count": len(picked),
+        "from_following": following_n,
         "dropped_offtopic": dropped,
         "errors": errs,
         "note": "这些是候选，不是你该看的东西。挑 2-3 条真的想点开的；一条都不想点就 skip。",
@@ -790,8 +827,9 @@ def cmd_browse(a):
             "pub": time.strftime("%m-%d", time.localtime(it["pubdate"])) if it.get("pubdate") else "",
             "desc": (it.get("desc") or "")[:110],
             "tags": it.get("_tags") or [],
-            "why": (("命中 " + "、".join(dict.fromkeys(x.lower() for x in (it.get("_hits") or [])))) if it.get("_hits")
-                    else ("搜索相关" if str(it.get("src") or "").startswith("search") else "")),
+            "why": it.get("why") or (
+                ("命中 " + "、".join(dict.fromkeys(x.lower() for x in (it.get("_hits") or [])))) if it.get("_hits")
+                else ("搜索相关" if str(it.get("src") or "").startswith("search") else "")),
             "src": it.get("src"),
         } for it in picked],
     })

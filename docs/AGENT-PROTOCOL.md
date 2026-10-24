@@ -45,7 +45,7 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 |---|---|---|
 | `plan` | 今天的生物钟、额度、风控、未读留言 | — |
 | `inbox` | 别人回她的 + 主人留言，每条带 `verdict` | — |
-| `browse` | 搜索候选（榜单只给 2 个探索位） | `--n 18` `--keywords a,b` `--explore 2` |
+| `browse` | 拿候选（关注 UP 必进 + 搜索 + 榜单探索位） | `--n 18` `--keywords a,b` `--explore 2` |
 | `read` | 字幕/热评/弹幕 → 素材包 | `BV号` |
 | `watch` | 全片抽 8 帧拼一张图 | `BV号` `--frames 8` `--force` |
 | `hear` | 下音轨（≤25 分钟），转写交给 agent | `BV号` `--max-min 25` |
