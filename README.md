@@ -299,13 +299,14 @@ python duty.py clean --dry-run  # 清过期抽帧和音轨（默认留 60 天；
 | `keywords` | 内置一套 AI 向起步词（DeepSeek / 智能体 / 大模型 / 科普 / 开源 / Claude…） | 刷什么，**按自己的喜好随便改**。是"方向"不是标题匹配：命中标题/简介/分区/标签都算；同义词用 `\|` 分组（`大模型\|LLM`），`lib/topics.py` 内置同义词表 |
 | `negative_keywords` | 内置 40 多个（时政 / 灾害 / 游戏实况 / 鬼畜 / 开箱…） | 屏蔽词，标题或标签命中就不碰；同样**按喜好增删**，完整列表在 `config.example.json` |
 | `budget.cap` | `1` | 每天最多几条评论。**新号保持 1** |
-| `budget.interval_min` | `45` | 两条之间最小间隔（分钟） |
+| `budget.interval_min` | `45` | 两条之间最小间隔（分钟）；想按秒设就用 `budget.interval_sec` 覆盖 |
 | `budget.skip_prob` | `0.22` | 每天"今天不想看"的概率，设 `0` 就是天天出门 |
 | `budget.quiet_prob` | `0.10` | "只看不说"的概率，设 `0` 就是看了就想说 |
 | `budget.view_floor / view_ceil` | 3000 / 150万 | 播放量区间 |
 | `budget.dur_min / dur_max` | 60 / 1200 | 时长区间（秒） |
 | `budget.fresh_days` | `14` | 只看几天内发布的 |
 | `reply_cap` | `3` | 每天最多回几条楼中楼；`-1` = 不限量（同一个人一天仍只回一次） |
+| `shifts_per_day` | `2` | 每天几班；每班最低条数 = ceil(cap ÷ 班次数)，`plan` 会直接给 `shift_min` |
 | `learn` | `true` | 要不要跟评论区同类学说话；`false` 关掉后 `duty.py learn` 直接跳过 |
 | `dynamic_per_week` / `dynamic_level` | `2` / `3` | 动态：一周上限、解锁等级 |
 | `retention_days` | `60` | 抽帧图和音轨保留几天，超期自动清；`0` = 永不清理。字幕原文和日记不受影响 |

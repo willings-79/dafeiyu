@@ -89,6 +89,42 @@ def mood_bump(dm=0, de=0, dt=0, why=""):
     """兼容旧调用：心情只保留文字描述，不再写数值或事件。"""
     return load(MOOD, {})
 
+
+def _truthy(v, default=True):
+    """配置里的开关可能是 true/1/"on"/"关" 等，统一成布尔值。"""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v != 0
+    s = str(v).strip().lower()
+    if s in ("1", "true", "on", "yes", "开"):
+        return True
+    if s in ("0", "false", "off", "no", "关"):
+        return False
+    return default
+
+
+def learning_on(c=None):
+    """学习开关。config 里 "learn" 优先（README 教的是这个），兼容旧的 learn_enabled。"""
+    c = conf() if c is None else c
+    if "learn" in c:
+        return _truthy(c.get("learn"), True)
+    return _truthy(c.get("learn_enabled"), True)
+
+
+def gap_limit_sec(c=None):
+    """两条评论的最短间隔（秒）。interval_sec 优先，兼容旧的 interval_min。"""
+    b = (c or conf()).get("budget") or {}
+    if "interval_sec" in b and b.get("interval_sec") is not None:
+        try:
+            return max(0, int(float(b["interval_sec"])))
+        except (TypeError, ValueError):
+            pass
+    try:
+        return max(0, int(float(b.get("interval_min", 45)) * 60))
+    except (TypeError, ValueError):
+        return 45 * 60
+
 # 评论区在打仗的信号（v1 的二次审查，搬过来）
 DOUBT = [
     "碰瓷", "照抄", "抄袭", "蹭热", "反噬", "举报", "割韭菜", "恰烂钱",
@@ -204,6 +240,7 @@ def conf():
     b.setdefault("quiet_prob", 0.10)
     b.setdefault("cap", 1)
     b.setdefault("interval_min", 45)
+    c.setdefault("shifts_per_day", 2)        # 每天几班；每班最低按 cap/班次数自动算
     b.setdefault("view_floor", 3000)
     b.setdefault("view_ceil", 1500000)
     b.setdefault("dur_min", 60)
@@ -446,7 +483,7 @@ def cmd_learn(a):
              "msg": "封了，以后不学这句" if n else "记下了，以后不学"})
         return 0
 
-    if not conf().get("learn", conf().get("learn_enabled", True)):
+    if not learning_on():
         out({"ok": True, "skipped": True,
              "msg": "学习功能是关着的（设置页或 config.local.json 里 \"learn\" 设为 false）。"
                     "要开回来改回 true 就行。"})
@@ -523,7 +560,7 @@ def cmd_persona(a):
     out_d["today_watched"] = [{"bvid": w.get("bvid"), "title": w.get("title")}
                               for w in (day.get("watched") or [])][-4:]
 
-    if c.get("learn", c.get("learn_enabled", True)):
+    if learning_on(c):
         try:
             import lib.learn as learn
             out_d["learned"] = learn.brief()
@@ -707,7 +744,18 @@ def cmd_plan(a):
     m = mood_state(c)
     who = bili.whoami()
     posted = posts_today(led)
+    attempts = attempts_today(led)
+    today_rows = [p for p in led["posts"]
+                  if (p.get("time") or "").startswith(today()) and not p.get("undone")]
+    tests_today = [p for p in today_rows if p.get("test") and not p.get("dry")]
+    drys_today = [p for p in today_rows if p.get("dry")]
+    hidden_today = [p for p in today_rows
+                    if not p.get("dry") and not p.get("test") and p.get("state") == 17]
+    day_note = load(os.path.join(DAILY, "%s.json" % today()), {})
+    diary_today = day_note.get("self") or []
     left = max(0, m["cap"] - len(posted))
+    shifts = max(1, int(c.get("shifts_per_day", 2)))
+    per_shift = max(1, (m["cap"] + shifts - 1) // shifts)
     idle = last_touch_days()
     if idle is not None and idle >= 7 and left > 0:
         left = 0
@@ -721,18 +769,24 @@ def cmd_plan(a):
         "woke": "今天想出门。逛一圈，挑一条真有话说的。",
     }[m["roll"] if left > 0 or m["roll"] != "woke" else "quiet"]
 
-    if m.get("acted"):
-        hint = "今天已经出过门了。除非主人点名，别再发第二条。"
+    if m.get("acted") and left > 0:
+        hint = ("今天已经开过口，额度还剩 %d 条。遇到合适的继续说，不用等下一班；"
+                "别只发一两条就收工。" % left)
+    elif m.get("acted"):
+        hint = "今天额度用完了，剩下只看看片、点赞、写日记。"
 
-    # 连续被阿瓦隆隐藏：先停手，养号比硬发有用
+    if hidden_today and left > 0:
+        hint = ("今天有 %d 条评论被隐藏，只有账号本人看得见，不占额度。"
+                "别重发同一条；换一条正常的继续，连续 2 条隐藏才停。" % len(hidden_today))
+
     # 最近连续 2 条都被阿瓦隆隐藏：先停手，养号比硬发有用。
     # 只取时间上最新的两条，别让更早的公开评论把连续隐藏的 streak 冲掉。
     recent = [p for p in led["posts"] if not p.get("dry") and not p.get("undone")][-2:]
     if len(recent) == 2 and all(p.get("state") == 17 for p in recent):
         left = 0
         m["cap"] = 0
-        hint = ("最近 %d 条评论全被阿瓦隆隐藏（只有账号本人可见）。先停几天：看片、点赞、投币、"
-                "把资料补全，别再发评论——越刷越坐实。" % len(recent))
+        hint = ("最近连续 2 条评论都被阿瓦隆隐藏（只有账号本人可见），今天彻底停发。"
+                "先停几天：看片、点赞、投币、把资料补全，别再发评论——越刷越坐实。")
 
     if not who["login"]:
         hint = ("还没登录。跑 python duty.py login 扫码登录（推荐），"
@@ -753,8 +807,19 @@ def cmd_plan(a):
         "cap": m["cap"],
         "cap_max": int(c["budget"]["cap"]),
         "acted": bool(m.get("acted")),
+        "attempts_today": len(attempts),
         "posted_today": len(posted),
+        "hidden_today": len(hidden_today),
+        "tested_today": len(tests_today),
+        "dry_today": len(drys_today),
+        "diary_today": len(diary_today),
+        "quota_note": "计入 %d/%d；隐藏 %d 条不占；测试 %d 条、演练 %d 条不占" % (
+            len(posted), m["cap"], len(hidden_today), len(tests_today), len(drys_today)),
         "left": left,
+        "interval_sec": gap_limit_sec(c),
+        "shifts_per_day": shifts,
+        "min_per_shift": per_shift,
+        "shift_min": min(per_shift, left),
         "cooldown_min": left_cd // 60,
         "cooldown_reason": why_cd,
         "idle_days": idle,
@@ -762,7 +827,10 @@ def cmd_plan(a):
         "recent_feel": _recent_feel(3),
         "at_target": c.get("owner_nick") or "",
         "at_left_today": max(0, 1 - len(ats_today(led))),
+        "at_hint": ("今天还没 @ 主人；遇到第一条合适的评论，可以加 --at"
+                    if max(0, 1 - len(ats_today(led))) > 0 and c.get("at_owner") else ""),
         "level": growth_state()["level"],
+        "learning": learning_on(c),
         "mood": {"今天": m.get("roll"), "状态": m.get("vibe") or "",
                  "心情": m.get("mood_text") or "",
                  "社交": m.get("social") or "", "想看": m.get("focus") or ""},
@@ -1705,11 +1773,13 @@ def cmd_post(a):
     # 间隔：按真实提交算，隐藏评论也算一次，别让"不计额度"变成连发
     if attempts:
         last = datetime.fromisoformat(attempts[-1]["time"])
-        gap = (datetime.now() - last).total_seconds() / 60
-        if gap < c["budget"]["interval_min"]:
+        gap = int((datetime.now() - last).total_seconds())
+        limit = gap_limit_sec(c)
+        if gap < limit:
+            ago = ("%d 秒" % gap) if gap < 120 else ("%d 分钟" % (gap // 60))
+            need = ("%d 秒" % limit) if limit < 120 else ("%d 分钟" % (limit // 60))
             out({"ok": False,
-                 "msg": "刚说过 %d 分钟，喘口气（要求 ≥%d 分钟）"
-                        % (gap, c["budget"]["interval_min"]),
+                 "msg": "刚说过 %s，喘口气（要求 ≥%s）" % (ago, need),
                  "hint": "这条安全线 --force 也不跳过；短时间连发是进阿瓦隆的高危动作。"})
             return 1
 

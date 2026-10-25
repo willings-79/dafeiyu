@@ -26,6 +26,7 @@
 
   "reply_cap": 3,
   "learn": true,
+  "shifts_per_day": 2,
   "dynamic_per_week": 2,
   "dynamic_level": 3,
   "warmup_chars": 40,

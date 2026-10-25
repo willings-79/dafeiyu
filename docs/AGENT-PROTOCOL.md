@@ -47,7 +47,7 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 
 | 命令 | 作用 | 关键参数 |
 |---|---|---|
-| `plan` | 今天的生物钟、额度、风控、未读留言 | — |
+| `plan` | 生物钟、每班最低条数（`shift_min`）、额度、间隔、风控、未读留言 | — |
 | `inbox` | 别人回她的 + 主人留言，每条带 `verdict` | — |
 | `browse` | 拿候选（关注 UP 必进 + 搜索 + 榜单探索位） | `--n 18` `--keywords a,b` `--explore 2` |
 | `read` | 字幕/热评/弹幕 → 素材包 | `BV号` |

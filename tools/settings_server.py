@@ -137,7 +137,9 @@ def snapshot():
         "negative_keywords": c.get("negative_keywords") or [],
         "budget": c.get("budget") or {},
         "reply_cap": c.get("reply_cap", 3),
-        "learn": bool(c.get("learn", c.get("learn_enabled", True))),
+        "learn": duty.learning_on(c),
+        "interval_sec": duty.gap_limit_sec(c),
+        "shifts_per_day": int(c.get("shifts_per_day", 2)),
         "schedule": c.get("schedule", ["12:50", "22:20"]),
         "schedule_driver": c.get("schedule_driver", "api"),
         "account": {"login": who.get("login"), "uname": who.get("uname"),
@@ -191,8 +193,18 @@ def save(body):
 
     if body.get("learn") is not None:
         v = bool(body["learn"])
-        if v != bool(c.get("learn", c.get("learn_enabled", True))):
+        if v != duty.learning_on(c):
             c["learn"] = v
+
+    spd = body.get("shifts_per_day")
+    if spd not in (None, ""):
+        try:
+            spd = max(1, min(8, int(float(spd))))
+            if int(c.get("shifts_per_day", 2)) != spd:
+                c["shifts_per_day"] = spd
+                changed.append("每天班次数 → %d" % spd)
+        except (TypeError, ValueError):
+            pass
             changed.append("学习开关 → " + ("开" if v else "关"))
 
     def lines(s):
@@ -396,6 +408,7 @@ textarea{min-height:76px;resize:vertical;line-height:1.6}
   <div class="grid">
     <div class="item"><label>每天最多几条（1-8）</label><input type="number" id="cap" min="1" max="8" step="1"></div>
     <div class="item"><label>楼中楼上限（-1=不限量）</label><input type="number" id="replyCap" min="-1" max="12" step="1"></div>
+    <div class="item"><label>每天班次数</label><input type="number" id="shiftsPerDay" min="1" max="8" step="1"><div class="hint">每班最低 = ceil(cap / 班次数)，和剩余 left 取小；cap 或班次改了会自动重算。</div></div>
     <div class="item"><label>一周动态上限（0-7）</label><input type="number" id="dynamicWeek" min="0" max="7" step="1"></div>
     <div class="item"><label>间隔下限（分钟）</label><input type="number" id="interval" min="15" max="360" step="5"></div>
     <div class="item"><label>播放量下限</label><input type="number" id="viewFloor" min="0" step="1000"></div>
@@ -465,6 +478,7 @@ function fill(d){
   const b = d.budget || {};
   $('cap').value = b.cap ?? 1;
   $('replyCap').value = d.reply_cap ?? 3;
+  $('shiftsPerDay').value = d.shifts_per_day ?? 2;
   $('dynamicWeek').value = d.dynamic_per_week ?? 2;
   $('interval').value = b.interval_min ?? 45;
   $('viewFloor').value = b.view_floor ?? 3000;
@@ -518,6 +532,7 @@ function save(){
     neg_text: $('neg').value,
     cap: $('cap').value,
     reply_cap: $('replyCap').value,
+    shifts_per_day: $('shiftsPerDay').value,
     dynamic_per_week: $('dynamicWeek').value,
     interval_min: $('interval').value,
     view_floor: $('viewFloor').value,
