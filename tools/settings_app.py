@@ -396,9 +396,11 @@ class App(tk.Tk):
         try:
             b = c.setdefault("budget", {})
             b["cap"] = int(self.vars["cap"].get())
-            b["interval_min"] = int(self.vars["interval_min"].get())
-            if "interval_sec" in b:
-                b.pop("interval_sec", None)      # 改分钟时清掉秒级覆盖，否则这次修改不生效
+            new_iv = int(self.vars["interval_min"].get())
+            if b.get("interval_min") != new_iv:
+                b["interval_min"] = new_iv
+                if "interval_sec" in b:
+                    b.pop("interval_sec", None)  # 真的改了分钟才清秒级覆盖；只改别的项不碰它
             b["view_floor"] = int(self.vars["view_floor"].get())
             b["dur_max"] = int(self.vars["dur_max"].get())
             c["reply_cap"] = int(self.vars["reply_cap"].get())
