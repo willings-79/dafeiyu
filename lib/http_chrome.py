@@ -18,8 +18,9 @@ try:
     from curl_cffi import requests as _creq
 
     HAVE_CFFI = True
-except Exception:  # 没装就退回普通请求，功能不中断
-    HAVE_CFFI = False
+except Exception:
+    HAVE_CFFI = False    # 没装也先不慌：真正要用时 ensure_cffi() 会现场装一个
+
 
 BASE = "https://api.bilibili.com"
 
@@ -31,10 +32,27 @@ HEADERS = {
 }
 
 
+def ensure_cffi():
+    """curl_cffi 缺了就现场装一个（lib/deps.py）。装不上抛 RuntimeError，带手动命令。
+
+    只在"用户正在等这个结果"的写请求里被调到，import 时不装——
+    agent 一天跑几十次命令，不能每条命令都先去碰 pip。
+    """
+    global _creq, HAVE_CFFI
+    if HAVE_CFFI:
+        return
+    from lib import deps
+    ok, why = deps.ensure("curl_cffi")
+    if not ok:
+        raise RuntimeError("curl_cffi 自动安装失败（%s）" % why)
+    from curl_cffi import requests as _r
+    _creq = _r
+    HAVE_CFFI = True
+
+
 def post_form(path, params, cookie=None, impersonate="chrome", timeout=30, referer=None):
     """带浏览器指纹的表单 POST。失败时抛异常，调用方自己兜。"""
-    if not HAVE_CFFI:
-        raise RuntimeError("没装 curl_cffi")
+    ensure_cffi()
     headers = dict(HEADERS)
     if referer:
         headers["Referer"] = referer
@@ -46,8 +64,7 @@ def post_form(path, params, cookie=None, impersonate="chrome", timeout=30, refer
 
 
 def get_json(path, params=None, cookie=None, impersonate="chrome", timeout=30):
-    if not HAVE_CFFI:
-        raise RuntimeError("没装 curl_cffi")
+    ensure_cffi()
     headers = dict(HEADERS)
     if cookie:
         headers["Cookie"] = cookie

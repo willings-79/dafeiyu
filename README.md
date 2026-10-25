@@ -13,7 +13,7 @@
 - **她会闭嘴。** 每天有额度，有一定概率"今天不想看"，评论区在吵架就不进去，评论被藏着就自动停手养号。**少说，是这个项目能活下来的前提。**
 - **她有自己的生活。** 有心情、有口味、有记忆，会升级；每天写两份日记——一份给你，一份给自己。**你也能随时给她留言、喂口味、改她的性格，她下一轮会先回你。**
 
-**不需要 API key，也不需要另外充值。** 她的脑子是你就已经在用的那个 agent——只要它有订阅额度或免费额度，养她就不再产生一分钱 API 费用。纯标准库实现，没有第三方依赖，`git clone` 完就能跑。
+**不需要 API key，也不需要另外充值。** 她的脑子是你就已经在用的那个 agent——只要它有订阅额度或免费额度，养她就不再产生一分钱 API 费用。核心是纯标准库，`git clone` 完就能跑；扫码登录、发评论要的几个小包，她第一次用到时会**自己装上**，不用你碰终端。
 
 代码 MIT，随时可以改成你自己的鱼。**请先读下面的[免责声明](#免责声明)。**
 
@@ -92,17 +92,18 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 <img src="docs/screenshots/settings.png" width="600" alt="设置页">
 
 *四个标签：账号 / 性格 / 偏好 / 作息。改完即存，不用碰 JSON。*
+
 ### 1. 装好
 
 ```bash
 git clone https://github.com/willings-79/dafeiyu.git
 cd dafeiyu
-pip install -r requirements.txt        # qrcode（扫码登录）+ curl_cffi（发评论必需）
+pip install -r requirements.txt        # 可省略：缺的包她用到时会自动装；先装好只是省那十几秒
 # 可选：装 yt-dlp + ffmpeg 才能抽帧看画面、下音轨转写
 pip install yt-dlp
 ```
 
-代码本体只用 Python 标准库，Python 3.9+ 即可。
+代码本体只用 Python 标准库，Python 3.9+ 即可；qrcode、curl_cffi 这些小包缺了会当场自动装。
 
 ### 2. 把账号交给她（开设置页，全程不用终端）
 
@@ -294,8 +295,8 @@ python duty.py clean --dry-run  # 清过期抽帧和音轨（默认留 60 天；
 |---|---|---|
 | `mode` | `"dry"` | `dry` 只演练不真发；`live` 真发 |
 | `SESSDATA` / `bili_jct` / `COOKIE_RAW` | — | 小号凭证；有整串 Cookie 就填 `COOKIE_RAW`，更像真人 |
-| `keywords` | `["AI", "人工智能", "科普"]` | 刷什么。是"方向"不是标题匹配：命中标题/简介/分区/标签都算；同义词用 `\|` 分组（`大模型\|LLM`），`lib/topics.py` 内置同义词表 |
-| `negative_keywords` | `["时政"]` | 屏蔽词，标题或标签命中就不碰 |
+| `keywords` | 内置一套 AI 向起步词（DeepSeek / 智能体 / 大模型 / 科普 / 开源 / Claude…） | 刷什么，**按自己的喜好随便改**。是"方向"不是标题匹配：命中标题/简介/分区/标签都算；同义词用 `\|` 分组（`大模型\|LLM`），`lib/topics.py` 内置同义词表 |
+| `negative_keywords` | 内置 40 多个（时政 / 灾害 / 游戏实况 / 鬼畜 / 开箱…） | 屏蔽词，标题或标签命中就不碰；同样**按喜好增删**，完整列表在 `config.example.json` |
 | `budget.cap` | `1` | 每天最多几条评论。**新号保持 1** |
 | `budget.interval_min` | `45` | 两条之间最小间隔（分钟） |
 | `budget.skip_prob` | `0.22` | 每天"今天不想看"的概率，设 `0` 就是天天出门 |
@@ -353,9 +354,13 @@ dafeiyu/
 │  ├─ persona.py           性格卡读写/渲染（persona.local.json ↔ 给 agent 的 markdown）
 │  └─ view.py              .md → 带样式 HTML 的视图层（只给人看，不改数据）
 ├─ tools/
-│  ├─ settings_server.py   本机设置页（127.0.0.1 + token；配置 + 性格卡都能改）
+│  ├─ settings_app.py      原生窗口版设置页（Windows；settings.vbs 打开的就是它）
+│  ├─ settings_server.py   网页版设置页（127.0.0.1 + token；全平台，配置 + 性格卡都能改）
 │  ├─ api_runner.py        可选：API 直连驱动（不用 agent 会话）
-│  └─ test_settings.py     设置页回归测试
+│  ├─ make_shortcuts.py    生成桌面快捷方式（鲸鱼娘图标那两个）
+│  ├─ open_today.py        《她的一天》浏览器入口
+│  ├─ test_settings.py     设置页回归测试
+│  └─ windows/             双击启动器：settings / settings_web / today / duty 四个 .vbs
 ├─ docs/AGENT-PROTOCOL.md  任何 agent 接管她的协议说明
 └─ state/                  （运行时生成，属于她的隐私，已在 .gitignore）
    ├─ ledger.json          说过什么、见过什么（幂等 + 额度 + 撤回凭据）
@@ -374,7 +379,7 @@ dafeiyu/
 | 字幕 0 行 | 该视频没有 AI 字幕。不是凭证问题（已走 wbi 签名 + 多轨取最长） |
 | `watch` 失败 | 没有 yt-dlp / ffmpeg；`read` 不受影响 |
 | 评论被吞 / state=17 | 新号风控严。`cap` 保持 1、别用 `--force`、被连续隐藏就停几天养号 |
-| `post` 报「缺 curl_cffi」 | **这是故意拦的**：urllib 的 TLS 指纹会被阿瓦隆识破，发出去也只有你自己能看见。`pip install curl_cffi` 就好 |
+| `post` 第一次会先装 curl_cffi | 没网或 pip 被锁时才要手动：`py -3 -m pip install curl_cffi`。**装它不是可选项**：urllib 的 TLS 指纹会被阿瓦隆识破，发出去也只有你自己能看见 |
 | `hear` 需要 agent 有语音转写能力 | 没有 AudioTranscribe 之类工具的 agent，可以用 whisper 本地转写，见 AGENT-PROTOCOL.md |
 | 只支持 Windows 的设置页弹窗 | 核心功能全平台可用；设置页用命令行起也一样 |
 

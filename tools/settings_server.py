@@ -92,8 +92,10 @@ _LOGIN = {"key": None}
 def _qr_svg(url):
     """qrcode 库不需要 Pillow 也能出矩阵，手工拼成 SVG 给页面渲染。"""
     try:
+        from lib import deps
+        deps.ensure("qrcode")            # 缺就现场装一次；装不上走降级（页面显示链接）
         import qrcode
-    except ImportError:
+    except Exception:
         return ""
     qr = qrcode.QRCode(border=2)
     qr.add_data(url)

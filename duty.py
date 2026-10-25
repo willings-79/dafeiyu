@@ -596,6 +596,10 @@ def _save_login(cookies):
 def cmd_login(a):
     """扫码登录：用 B站 App 扫终端里的二维码，凭证自动写进 config.local.json。
     扫的是哪个号，她就是哪个号——请扫小号。"""
+    from lib import deps
+    deps.ensure("qrcode")            # 缺就现场装；装不上走下面"贴链接"的降级
+    if a.png:
+        deps.ensure("PIL")           # --png 存图要 pillow
     try:
         import qrcode as _qrcode
     except ImportError:

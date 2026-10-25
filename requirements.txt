@@ -1,18 +1,27 @@
-# Only stdlib is required to run. Everything below is optional but recommended.
+# Core is stdlib-only. The packages below are auto-installed the first time
+# they are needed (login QR / posting a comment), so most users never touch pip.
+# If auto-install fails (offline, or a locked-down Python), run:
+#   py -3 -m pip install -r requirements.txt
 # (Comments in English on purpose: pip on zh-CN Windows decodes this file as GBK.)
 
 # qrcode -- renders the login QR for `python duty.py login`
 qrcode>=7
 
 # certifi -- pinned CA bundle; immune to broken system cert setups
-# (the usual cause of CERTIFICATE_VERIFY_FAILED on zh-CN Windows)
+# (the usual cause of CERTIFICATE_VERIFY_FAILED on zh-CN Windows).
+# Recommended but NOT auto-installed: the code falls back to the system
+# certificate store when it's missing.
 certifi
 
 # curl_cffi -- REQUIRED to post comments. It sends write requests with Chrome's
-# TLS fingerprint. Without it `post` refuses to run instead of silently falling
-# back to urllib -- that fallback is exactly what gets comments shadow-hidden
-# by Avalon (they look sent, but nobody else can see them).
+# TLS fingerprint. Auto-installed on first `post`; if that fails, `post` refuses
+# to run instead of silently falling back to urllib -- that fallback is exactly
+# what gets comments shadow-hidden by Avalon (they look sent, but nobody else
+# can see them).
 curl_cffi>=0.7
+
+# pillow -- only needed for `duty.py login --png`; auto-installed on demand,
+# so it is not listed here.
 
 # System tools (not pip): yt-dlp + ffmpeg are needed for `watch` (video frames)
 # and `hear` (audio). `pip install yt-dlp`, and make sure ffmpeg is on PATH.

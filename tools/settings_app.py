@@ -199,6 +199,13 @@ class App(tk.Tk):
 
     def start_login(self):
         try:
+            from lib import deps
+            self.qr_msg.config(text="第一次扫码，先装画二维码的小包（十几秒，只此一次）…", fg=DIM)
+            self.update_idletasks()
+            ok, why = deps.ensure("qrcode")
+            if not ok:
+                messagebox.showerror("大肥鱼", "qrcode 自动安装失败：%s" % why)
+                return
             url, key = bili.qr_generate()
         except Exception as exc:
             messagebox.showerror("大肥鱼", "生成二维码失败：%s" % exc)

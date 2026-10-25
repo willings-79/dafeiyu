@@ -737,12 +737,11 @@ def reply_add(aid, text, at_name=None, at_mid=None, root=None, parent=None, pict
     # 但签名是对 body 算的，查询串只有 w_rid/wts 属于"不完整签名"，反而更像异常客户端。
     path = "/x/v2/reply/add"
     try:
-        # 只用 Chrome TLS 指纹发。没有 curl_cffi 就明确失败，绝不静默退回 urllib——
-        # 那样接口会返回成功，评论却被阿瓦隆隐藏，看起来像"发了却没人看得见"。
+        # 只用 Chrome TLS 指纹发。curl_cffi 缺了会现场装一次（lib/deps.py），
+        # 装不上才明确失败；绝不静默退回 urllib——那样接口会返回成功，
+        # 评论却被阿瓦隆隐藏，看起来像"发了却没人看得见"。
         from lib import http_chrome
-        if not http_chrome.HAVE_CFFI:
-            return False, ("缺 curl_cffi，发不了评论——urllib 的 TLS 指纹会被阿瓦隆识破。"
-                           "先 pip install curl_cffi 再试。"), None
+        http_chrome.ensure_cffi()
         ref = ("https://www.bilibili.com/video/%s" % bvid) if bvid else None
         d = http_chrome.post_form(path, p, cookie=cookie_header(), referer=ref)
     except Exception as exc:
