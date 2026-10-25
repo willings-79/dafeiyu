@@ -1733,14 +1733,31 @@ def cmd_post(a):
                  "hint": "同一个 UP 一天只碰一次。这是安全线，--force 也不跳。"})
             return 1
 
-    # 没看过的别评：素材包或抽帧至少得有一个，不许凭标题说话（红线：不编）
-    if (not os.path.exists(os.path.join(MAT, "%s.md" % bvid))
-            and not os.path.exists(os.path.join(FRAMES, "%s-grid.png" % bvid))
-            and not a.force):
-        out({"ok": False,
-             "msg": "还没看过这条（素材包、抽帧都没有），不许凭标题说话",
-             "hint": "先 read / watch / hear 之一拿到素材，再回来 post。"})
-        return 1
+    # 没看过的别评：光"读过"不算数，得真拿到内容——字幕行数 > 0、有音频转写、
+    # 或抽过帧。只拉到简介和热评的素材，照样不许凭标题说话（红线：不编）
+    if not a.force:
+        mat_p = os.path.join(MAT, "%s.md" % bvid)
+        mat_text = ""
+        try:
+            if os.path.exists(mat_p):
+                mat_text = open(mat_p, encoding="utf-8").read()
+        except Exception:
+            mat_text = ""
+        has_grid = os.path.exists(os.path.join(FRAMES, "%s-grid.png" % bvid))
+        asr_p = os.path.join(MAT, "%s.asr.txt" % bvid)
+        try:
+            has_asr_file = os.path.exists(asr_p) and os.path.getsize(asr_p) > 0
+        except Exception:
+            has_asr_file = False
+        m_sub = re.search(r"## 字幕（(\d+) 行", mat_text)
+        has_sub = bool(m_sub and int(m_sub.group(1)) > 0)
+        has_asr = ("## 音频转写" in mat_text) or has_asr_file
+        if not (has_sub or has_asr or has_grid):
+            out({"ok": False,
+                 "msg": "还没真看过这条：素材里没有字幕原文、没有转写，也没抽过帧",
+                 "hint": "先 read 拿字幕；没字幕就 watch 抽帧或 hear+transcript 转写。"
+                         "只有简介和热评，不够你开口。真要发就 --force。"})
+            return 1
 
     # 二次审查：这条评论区是不是在打仗。吵架现场不进去，进去就是找骂。
     try:
@@ -1785,20 +1802,28 @@ def cmd_post(a):
              "hint": "短句更容易过审。等有一条 visible 了，这限制自动解除。"})
         return 1
 
+    # --test 只演练，绝不调到写接口；--test-live 才真发，但仍不占额度。
+    # B站不认识"本地测试"，任何真发出去的内容都会算进它的风控。
+    # 模式在传图之前就得定下来：dry/--test 不上传图床——
+    # 图一传就真的出去了，演练不该有任何外部副作用
+    mode = "live" if test_live else ("dry" if test_dry else (a.mode or c["mode"]))
+
     pic = None
     if getattr(a, "image", None):
         if growth_state()["level"] < 4 and not a.force:
             out({"ok": False, "msg": "她还没到 Lv4，评论先别带图",
                  "hint": "多看看多说说，等级到了这扇门自然开。"})
             return 1
-        okp, msgp, pic = bili.upload_image(a.image)
-        if not okp:
-            out({"ok": False, "msg": "图传不上去：%s" % msgp})
-            return 1
-
-    # --test 只演练，绝不调到写接口；--test-live 才真发，但仍不占额度。
-    # B站不认识"本地测试"，任何真发出去的内容都会算进它的风控。
-    mode = "live" if test_live else ("dry" if test_dry else (a.mode or c["mode"]))
+        if mode != "live":
+            if not os.path.exists(a.image):
+                out({"ok": False, "msg": "图片路径不存在：%s" % a.image})
+                return 1
+            pic = {"img_src": "（演练：图没上传）", "local": a.image}
+        else:
+            okp, msgp, pic = bili.upload_image(a.image)
+            if not okp:
+                out({"ok": False, "msg": "图传不上去：%s" % msgp})
+                return 1
     if mode != "live":
         if not is_test:
             save(MOOD, dict(m, acted=True, note=(m.get("note") or "") + " dry-run"))
