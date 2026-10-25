@@ -148,10 +148,19 @@ def lint(text):
     self_talk = re.search(r"我|自己|本鱼|本鲸", t)   # 自言自语也是合法的一种
     if not hook and not self_talk and chars >= 20:
         tips.append("少个钩子：自嘲、许愿、喊话都行；哪怕只是自己嘟囔一句也好")
-    maxims = [name for pattern, name in MAXIM if re.search(pattern, own)]
-    if maxims:
-        hard.append("格言/总结腔：%s" % "、".join(maxims))
+    # 格言/总结腔：句式命中的那句话如果是在说"本鲸/我"自己（自我反应），
+    # 降为提醒不硬拦——"本鲸不是饿，是嘴馋"是好话；拦的是"给视频下定义"的评论员腔
+    sent_list = [x for x in re.split(r"[。！？!?…~\n]+", own) if x.strip()]
+    maxims_hard, maxims_soft = [], []
+    for sent in sent_list:
+        for pattern, name in MAXIM:
+            if re.search(pattern, sent):
+                (maxims_soft if re.search(r"本鲸|本鱼|我", sent) else maxims_hard).append(name)
+    if maxims_hard:
+        hard.append("格言/总结腔：%s" % "、".join(dict.fromkeys(maxims_hard)))
         tips.append("把最后一句的「下定义」换成本鲸的动作、想要的东西，或一句具体反应")
+    elif maxims_soft:
+        warn.append("格言腔句式（说的是自己，放行；别拿来总结视频）")
     if not re.search(r"我|自己|本鲸|本鱼|白饭|鱼|鲸|兜|鳞", t):
         tips.append("没有你的位置：加半句你自己的反应，别只当旁白")
 

@@ -343,6 +343,7 @@ dafeiyu/
 ├─ duty.py                 她的手：plan/browse/read/watch/post/reply/undo/brief…（CLI）
 ├─ duty.md                 值班章程：每一轮"你该干什么"（给 agent 读的行为准则）
 ├─ persona.md              人设卡（示例：大肥鱼。整张换掉也行）
+├─ journal.md              日记卡（日记怎么写：不套评论骨架，内心戏不用演）
 ├─ automation-prompt.txt   贴进 agent 定时任务的提示词原文
 ├─ config.example.json     配置模板 → 复制成 config.local.json 再填
 ├─ lib/

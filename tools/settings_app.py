@@ -345,7 +345,7 @@ class App(tk.Tk):
         lrow = tk.Frame(f, bg=CARD)
         lrow.pack(anchor="w", pady=(12, 0))
         tk.Label(lrow, text="跟评论区同类学说话", bg=CARD, font=FONT).pack(side="left")
-        self.learn_v = tk.BooleanVar(value=bool(c.get("learn_enabled", True)))
+        self.learn_v = tk.BooleanVar(value=duty.learning_on(c))
         self.learn_btn = tk.Button(lrow, font=FONT_S, relief="flat", cursor="hand2",
                                    bd=0, highlightthickness=0, padx=14, pady=2,
                                    command=self._toggle_learn)
@@ -397,6 +397,8 @@ class App(tk.Tk):
             b = c.setdefault("budget", {})
             b["cap"] = int(self.vars["cap"].get())
             b["interval_min"] = int(self.vars["interval_min"].get())
+            if "interval_sec" in b:
+                b.pop("interval_sec", None)      # 改分钟时清掉秒级覆盖，否则这次修改不生效
             b["view_floor"] = int(self.vars["view_floor"].get())
             b["dur_max"] = int(self.vars["dur_max"].get())
             c["reply_cap"] = int(self.vars["reply_cap"].get())
@@ -405,7 +407,7 @@ class App(tk.Tk):
             messagebox.showerror("大肥鱼", "数字项里填的不是数字")
             return
         c["mode"] = self.mode_v.get()
-        c["learn_enabled"] = self.learn_v.get()
+        c["learn"] = self.learn_v.get()          # 和网页版/文档统一用 learn，旧 learn_enabled 只读不写
         c["keywords"] = [x.strip() for x in self.kw.get("1.0", "end").splitlines() if x.strip()]
         c["negative_keywords"] = [x.strip() for x in self.neg.get("1.0", "end").splitlines() if x.strip()]
         bili.save_conf(c)

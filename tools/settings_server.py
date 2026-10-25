@@ -195,6 +195,7 @@ def save(body):
         v = bool(body["learn"])
         if v != duty.learning_on(c):
             c["learn"] = v
+            changed.append("学习开关 → " + ("开" if v else "关"))
 
     spd = body.get("shifts_per_day")
     if spd not in (None, ""):
@@ -205,7 +206,6 @@ def save(body):
                 changed.append("每天班次数 → %d" % spd)
         except (TypeError, ValueError):
             pass
-            changed.append("学习开关 → " + ("开" if v else "关"))
 
     def lines(s):
         """一行一个。多行的时候不拆行内的顿号/逗号——"cos、cosplay" 是一个词，不是两个。"""
@@ -246,6 +246,10 @@ def save(body):
         if b.get(k) != v:
             b[k] = v
             changed.append("%s → %s" % (k, v))
+            if k == "interval_min" and "interval_sec" in b:
+                # 用户在改分钟：秒级覆盖会让这次修改不生效，顺手清掉
+                b.pop("interval_sec", None)
+                changed.append("（已清除秒级覆盖 interval_sec）")
 
     bili.save_conf(c)
     dw = body.get("dynamic_per_week")
