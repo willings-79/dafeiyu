@@ -100,14 +100,31 @@ def grab(bvid, frames=8, force=False, skip=None):
     cols = 4 if frames >= 8 else 2
     rows = (frames + cols - 1) // cols
     if full:
+        # 老写法 select+between(t,T,T+0.2) 会在每个采样窗里放进好几帧，
+        # tile 又只收最前面的 8 帧——结果整张图全是第一个采样点那 0.2 秒。
+        # 改成每个采样点单独 seek 一帧（-frames:v 1），再按实际抽到的张数拼图。
         times = _pick_times(span, frames, skip)
-        sel = "+".join("between(t,%.2f,%.2f)" % (t, t + 0.2) for t in times)
-        vf = "select='%s',scale=420:-1,tile=%dx%d" % (sel, cols, rows)
+        tmp = os.path.join(OUT, "%s-frames" % bvid)
+        os.makedirs(tmp, exist_ok=True)
+        n_ok = 0
+        for t in times:
+            fp = os.path.join(tmp, "f%02d.png" % n_ok)
+            c1, o1 = _run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % t,
+                           "-i", clip, "-frames:v", "1", "-vf", "scale=420:-1", fp], 120)
+            if c1 == 0 and os.path.exists(fp):
+                n_ok += 1
+        if n_ok:
+            code, out = _run(["ffmpeg", "-y", "-loglevel", "error",
+                              "-start_number", "0", "-i", os.path.join(tmp, "f%02d.png"),
+                              "-vf", "tile=%dx%d" % (cols, rows), "-frames:v", "1", grid])
+        else:
+            code, out = 1, "一个采样点都没抽到"
+        shutil.rmtree(tmp, ignore_errors=True)
     else:
         interval = max(span / max(frames, 1), 0.5)
         vf = "fps=%s,scale=420:-1,tile=%dx%d" % (1.0 / interval, cols, rows)
-    code, out = _run(["ffmpeg", "-y", "-loglevel", "error", "-i", clip,
-                      "-vf", vf, "-frames:v", "1", grid])
+        code, out = _run(["ffmpeg", "-y", "-loglevel", "error", "-i", clip,
+                          "-vf", vf, "-frames:v", "1", grid])
     if code != 0 or not os.path.exists(grid):
         return None, "抽帧失败：%s" % (out.strip()[-160:] or "ffmpeg 报错")
 

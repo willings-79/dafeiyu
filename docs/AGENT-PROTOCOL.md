@@ -57,9 +57,9 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 | `persona` | 人设 + 记忆 + 今天状态 + 最近发言，一次给全 | — |
 | `check` | 只跑自检不发 | `--text "..."` |
 | `post` | 发评论（默认 dry） | `--bvid` `--text` `--at`(可选) `--image 路径`(可选) `--mode live` `--test`(只演练) `--test-live`(真发但不占额度) |
-| `verify` | 查真实可见性（匿名复查） | `--bvid` 或 `--all` |
-| `reply` | 楼中楼回复（≤80 字；上限随配置，`-1` 不限量） | `--bvid --root --parent --mid --text` |
-| `react` | 点赞 / 投币 | `--bvid` `--coin 0/1/2` `--no-like` |
+| `verify` | 查真实可见性（匿名复查；匿名通道没查成会回 `visible: null`，别当成公开） | `--bvid` 或 `--all` |
+| `reply` | 楼中楼回复（≤80 字；Lv2 解锁；上限随配置，`-1` 不限量） | `--bvid --root --parent --mid --text` |
+| `react` | 点赞 / 投币（dry 模式不真点，`--force` 单次真点） | `--bvid` `--coin 0/1/2` `--no-like` `--force` |
 | `dynamic` | 发动态（Lv3，一周 2 条） | `--text` `--why` |
 | `emotes` | 列 B站表情 token | `--search 关键词` |
 | `image` | 传图床拿 `img_src` | `图片路径` |

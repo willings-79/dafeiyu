@@ -21,7 +21,7 @@
 4. 对每条跑 `python duty.py read BV号`，然后读 `state/materials/BV号.md` 里的字幕原文再判断。
    字幕里的插播广告已被自动剔除（`ad_windows` 会列出来），**不要评论广告内容，也别把广告词当视频观点**。
    - 没字幕：跑 `python duty.py watch BV号`，用 Read 打开那张 grid 图看一眼；看不明白就放弃这条，**不许凭标题猜**。
-   - 如果这条你很想看、但没字幕也没画面可看：跑 `python duty.py hear BV号` 下音轨，用你手头的语音转写工具（AudioTranscribe / whisper 等，转写方法见 docs/AGENT-PROTOCOL.md）转成文本，然后 `python duty.py transcript --bvid BV号 --file 文本文件`。超过 20 分钟或转写失败就放弃。
+   - 如果这条你很想看、但没字幕也没画面可看：跑 `python duty.py hear BV号` 下音轨，用你手头的语音转写工具（AudioTranscribe / whisper 等，转写方法见 docs/AGENT-PROTOCOL.md）转成文本，然后 `python duty.py transcript --bvid BV号 --file 文本文件`。超过 25 分钟或转写失败就放弃。
    - 目标是认真读 4-6 条；一条实在读不下去可以换，最多换 3 次。
 4.5 读完后先判断调性：致敬、纪念、公益、传统文化、严肃教学/新闻/访谈，或者评论区全在认真讨论——
    这类**只看不评**。记一句日记、点个赞可以，别去评论区抖机灵。分不清就不发。

@@ -32,6 +32,15 @@ _s.close()
 srv.PORT = FREE_PORT
 # 聊天写到临时目录，别把测试留言混进她真正的对话里
 srv.duty.CHAT = tempfile.mkdtemp(prefix="feiyu-chat-")
+# 性格卡同样隔离：下面要测"导入一张卡再删掉"，
+# 不隔离的话会先覆盖、再删掉用户真正的 persona.local.json。
+# 注意只能指到项目根之内——persona._checked() 会拒绝根外的路径（这是它该有的警惕）
+import lib.persona as _persona  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+os.makedirs(os.path.join(ROOT, "state"), exist_ok=True)
+_persona.LOCAL = _Path(os.path.join(ROOT, "state", "feiyu-test-persona.local.json"))
+if _persona.LOCAL.exists():
+    _persona.LOCAL.unlink()
 
 BASE = "http://127.0.0.1:%d" % FREE_PORT
 T = srv.TOKEN

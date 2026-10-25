@@ -947,9 +947,14 @@ def _kill_port_owner(lo, hi):
     for pid in pids:
         if not pid.isdigit() or int(pid) == os.getpid():
             continue
-        rr = _run_quiet(["tasklist", "/FI", "PID eq %s" % pid, "/FO", "CSV"])
-        info = ((rr.stdout if rr else "") or "").lower()
-        if "python" not in info:
+        # 只杀自己家的旧设置页：确认命令行里真的是 settings_server.py。
+        # 只认"进程名是 python"太粗——879x 上碰巧跑着别人的 Python 服务就误杀了。
+        # 命令行查不出来时宁可不动（顶多留个旧实例），也不冒险杀别人的进程。
+        rr = _run_quiet(["powershell", "-NoProfile", "-Command",
+                         "(Get-CimInstance Win32_Process -Filter 'ProcessId=%s').CommandLine" % pid])
+        if rr is None or rr.returncode != 0:
+            continue
+        if "settings_server" not in (rr.stdout or ""):
             continue
         _run_quiet(["taskkill", "/PID", pid, "/F"])
         killed.append(pid)

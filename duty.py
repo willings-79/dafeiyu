@@ -977,6 +977,7 @@ def mark_watched(bvid, title="", cover=""):
             return
     lst.append({"bvid": bvid, "title": title, "cover": cover, "t": time.strftime("%H:%M")})
     save(p, day)
+    growth_add(2, why="看了条新片")     # 章程：看片 +2；同一天同一条只记一次（上面去重过了）
 
 
 def cmd_read(a):
@@ -1183,8 +1184,9 @@ def _check_post(target):
     except Exception:
         pass
 
-    # 匿名查得到才算真公开：登录态能看到、匿名看不到 = 被阿瓦隆藏着
-    anon = False
+    # 匿名查得到才算真公开：登录态能看到、匿名看不到 = 被阿瓦隆藏着。
+    # 匿名通道没查成（网络/风控/限频）时标 None（未知），不能拿登录态的结果装作"公开"。
+    anon = None
     try:
         from lib import http_chrome
         cc = bili.load_conf()
@@ -1192,13 +1194,16 @@ def _check_post(target):
                                   {"oid": target["aid"], "type": 1, "root": rpid,
                                    "ps": 1, "pn": 1},
                                   cookie="buvid3=%s" % (cc.get("buvid3") or ""))
-        aroot = (ad.get("data") or {}).get("root") or {}
-        anon = bool(aroot) and aroot.get("state") == 0
+        if ad.get("code") not in (0, None) or not ad.get("data"):
+            anon = None            # 匿名通道自己挂了，不算"查过了"
+        else:
+            aroot = (ad.get("data") or {}).get("root") or {}
+            anon = bool(aroot) and aroot.get("state") == 0
     except Exception:
-        anon = False
+        anon = None
 
     target["anon_public"] = anon
-    target["visible"] = bool(anon or (listed and state == 0))
+    target["visible"] = (bool(anon) if anon is not None else None)
     target["state"] = state
     target["checked_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
     return target["visible"], state, listed, anon
@@ -1242,10 +1247,13 @@ def cmd_verify(a):
     if state not in (0, None) and prev_state != state:
         mood_bump(dm=-2, de=-2, why="评论卡在审核里")
 
-    if visible:
+    if visible is None:
+        msg = "匿名通道这次没查成（网络或风控），能不能被别人看见没法确认；过几分钟再 verify 一次"
+    elif visible:
         msg = "已经在前台看到了，别人能看见"
     elif state == 0:
-        msg = "评论存在且状态正常，但最新列表还没刷出来——过几分钟再看"
+        msg = ("评论存在、状态正常，但匿名请求看不到它——多半是被藏了，也可能还没刷出来。"
+               "别重发，过几分钟再查一次")
     elif state == 11:
         msg = "state=11：还在阿瓦隆审核中，之后可能转正常，也可能被删。先别重发。"
     elif state == 17:
@@ -1411,6 +1419,10 @@ def cmd_reply(a):
            if (x.get("time") or "").startswith(today())) and not a.force:
         out({"ok": False, "msg": "今天已经跟这个人说过话了，别追着聊"})
         return 1
+    if growth_state()["level"] < 2 and not a.force:
+        out({"ok": False, "msg": "她还没到 Lv2，先不回楼中楼",
+             "hint": "多看看多说说，长大一点这扇门就开了。"})
+        return 1
 
     text = (a.text or "").strip()
     lr = lint.lint(text)
@@ -1509,6 +1521,7 @@ def warmup(led):
 # ---------------------------------------------------------------- 点赞 / 投币 / 动态 / 成长
 
 def cmd_react(a):
+    c = conf()
     try:
         meta = bili.meta(a.bvid)
     except Exception as exc:
@@ -1517,6 +1530,14 @@ def cmd_react(a):
     if meta.get("pay"):
         out({"ok": False, "msg": "付费视频，不碰"})
         return 1
+
+    # dry 模式不真点：硬币是真金白银的零花，dry 的含义就是"演练、零副作用"
+    if c.get("mode") != "live" and not a.force:
+        would = "、".join((["点赞"] if not a.no_like else [])
+                          + (["投币 x%d" % a.coin] if a.coin else [])) or "什么都不做"
+        out({"ok": True, "dry": True, "would": would,
+             "msg": "dry 模式：没真点。要真点就把 mode 改成 live，或这一次加 --force"})
+        return 0
 
     ok, msg = bili.react(meta["aid"], like=(not a.no_like), coin=a.coin)
     if not ok:
@@ -1527,7 +1548,8 @@ def cmd_react(a):
     m = mood_bump(dm=1, de=-2, why="给《%s》点了赞" % (meta["title"] or "")[:12])
     out({"ok": True, "msg": msg, "to": meta["title"][:30],
          "growth": {"level": g["level"], "xp": g["xp"]},
-         "mood": {"mood": m["mood"], "energy": m["energy"]}})
+         "mood": {"今天": m.get("roll"), "状态": m.get("vibe") or "",
+                  "心情": m.get("mood_text") or ""}})
 
 
 def cmd_dynamic(a):
@@ -1584,7 +1606,8 @@ def cmd_dynamic(a):
     m = mood_bump(dm=2, de=-5, dt=1, why="发了条动态")
     out({"ok": True, "dynamic_id": str(did),
          "url": "https://t.bilibili.com/%s" % did,
-         "mood": {"mood": m["mood"], "energy": m["energy"]}, "msg": "发了"})
+         "mood": {"今天": m.get("roll"), "状态": m.get("vibe") or "",
+                  "心情": m.get("mood_text") or ""}, "msg": "发了"})
 
 
 def cmd_grow(a):
@@ -1599,7 +1622,7 @@ def cmd_grow(a):
                  "社交": m.get("social") or "", "想看": m.get("focus") or ""},
         "owner_unread": len(_unread_owner()),
         "unlocks": {
-            "回楼中楼": True,
+            "回楼中楼": g["level"] >= 2,
             "发动态": g["level"] >= 3,
             "评论带图": g["level"] >= 4,
         },
@@ -1647,12 +1670,20 @@ def cmd_post(a):
         out({"ok": False, "msg": "没登录：%s" % who["reason"]})
         return 1
 
-    # 额度：state=17 的隐藏评论不占额度；连续两条被隐藏仍要停手
-    posted = posts_today(led)
-    attempts = attempts_today(led)
     test_dry = bool(getattr(a, "test", False))
     test_live = bool(getattr(a, "test_live", False))
     is_test = test_dry or test_live
+
+    # 章程硬拦：skip 不出门，quiet 只看不说——这条不指望模型自觉
+    if (m.get("roll") in ("skip", "quiet")) and not a.force and not is_test:
+        out({"ok": False,
+             "msg": "今天是 %s（%s），按章程不评论" % (m["roll"], m.get("vibe_text") or ""),
+             "hint": "看看片、写日记就好。真有非说不可的，加 --force。"})
+        return 1
+
+    # 额度：state=17 的隐藏评论不占额度；连续两条被隐藏仍要停手
+    posted = posts_today(led)
+    attempts = attempts_today(led)
     if len(posted) >= m["cap"] and not a.force and not is_test:
         out({"ok": False, "msg": "今天计入额度的评论已经够了（%d/%d）" % (len(posted), m["cap"]),
              "hint": "隐藏评论不占额度，但别拿额度当理由硬刷。明天再来。"})
@@ -1662,9 +1693,9 @@ def cmd_post(a):
              "hint": "再发大概率还是 17；看片、点赞、投币、补资料，过几天再试。"})
         return 1
 
-    # 同一条视频、同一个 UP
+    # 同一条视频只说一次：dry 演练不算——从没真的发出去过，不该挡住后来的真发
     for p in led["posts"]:
-        if p.get("bvid") == bvid and not p.get("undone"):
+        if p.get("bvid") == bvid and not p.get("undone") and not p.get("dry"):
             out({"ok": False, "msg": "这条已经说过了（%s）" % p.get("time")})
             return 1
 
@@ -1689,6 +1720,26 @@ def cmd_post(a):
         led.setdefault("blocked", {})[bvid] = "充电专属/付费，主人自己也看不了"
         save(LEDGER, led)
         out({"ok": False, "msg": "这条是充电专属，跳过去。别在看不见的内容底下说话。"})
+        return 1
+
+    # 同一个 UP 一天只碰一次（红线；dry 演练不算，这条 --force 也不放）
+    for p in led["posts"]:
+        if (p.get("owner_mid")
+                and str(p.get("owner_mid")) == str(meta.get("owner_mid") or "")
+                and not p.get("dry") and not p.get("undone")
+                and (p.get("time") or "").startswith(today())):
+            out({"ok": False,
+                 "msg": "今天已经跟 %s（这个 UP）说过一次了，换一条" % (meta.get("owner") or ""),
+                 "hint": "同一个 UP 一天只碰一次。这是安全线，--force 也不跳。"})
+            return 1
+
+    # 没看过的别评：素材包或抽帧至少得有一个，不许凭标题说话（红线：不编）
+    if (not os.path.exists(os.path.join(MAT, "%s.md" % bvid))
+            and not os.path.exists(os.path.join(FRAMES, "%s-grid.png" % bvid))
+            and not a.force):
+        out({"ok": False,
+             "msg": "还没看过这条（素材包、抽帧都没有），不许凭标题说话",
+             "hint": "先 read / watch / hear 之一拿到素材，再回来 post。"})
         return 1
 
     # 二次审查：这条评论区是不是在打仗。吵架现场不进去，进去就是找骂。
@@ -1736,6 +1787,10 @@ def cmd_post(a):
 
     pic = None
     if getattr(a, "image", None):
+        if growth_state()["level"] < 4 and not a.force:
+            out({"ok": False, "msg": "她还没到 Lv4，评论先别带图",
+                 "hint": "多看看多说说，等级到了这扇门自然开。"})
+            return 1
         okp, msgp, pic = bili.upload_image(a.image)
         if not okp:
             out({"ok": False, "msg": "图传不上去：%s" % msgp})
@@ -2139,6 +2194,7 @@ def main():
     p = sub.add_parser("react"); p.add_argument("--bvid", required=True)
     p.add_argument("--coin", type=int, default=0, choices=[0, 1, 2])
     p.add_argument("--no-like", action="store_true")
+    p.add_argument("--force", action="store_true", help="dry 模式下也真点这一次")
     p = sub.add_parser("dynamic"); p.add_argument("--text", required=True)
     p.add_argument("--why", default="", help="为什么发：节日 / 聊天 / 日记里的一件事")
     p.add_argument("--force", action="store_true")
