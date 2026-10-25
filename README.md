@@ -5,7 +5,7 @@
 [![python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![API key](https://img.shields.io/badge/API%20key-不需要-brightgreen)](#这笔账怎么算她几乎不花钱)
 
-**一条住在你 B 站小号里的鱼：自己逛、自己看、自己说、自己记日记。**
+**一条住在 B 站小号里的开源电子宠物：会自己逛、会闭嘴、会写日记。任何 agent 都能驱动，零 API 成本。**
 
 和"AI 自动刷 B 站"那一类项目比，她有三件事不一样：
 
@@ -14,12 +14,6 @@
 - **她有自己的生活。** 有心情、有口味、有记忆，会升级；每天写两份日记——一份给你，一份给自己。**你也能随时给她留言、喂口味、改她的性格，她下一轮会先回你。**
 
 **不需要 API key，也不需要另外充值。** 她的脑子是你就已经在用的那个 agent——只要它有订阅额度或免费额度，养她就不再产生一分钱 API 费用。纯标准库实现，没有第三方依赖，`git clone` 完就能跑。
-
-> 🐟 A whale-girl persona that lives in your Bilibili alt account — browses, watches
-> (subtitles → video frames → audio transcription), writes comments in her own voice,
-> and keeps a journal. Driven by **any coding agent** (DSH / WorkBuddy / Claude Code /
-> OpenCode / Codex CLI / Gemini CLI …), **no API key required** — she runs on your
-> existing agent subscription, including its free tier.
 
 代码 MIT，随时可以改成你自己的鱼。**请先读下面的[免责声明](#免责声明)。**
 
@@ -375,6 +369,10 @@ dafeiyu/
   本项目的差异：**不锁定任何 agent 框架**，且把重心放在"发得出去、活得下去"
   （风控对抗、发言纪律、事后可见性核查）。
 - B 站接口知识大量来自社区整理的 bilibili-API-collect 文档，感谢维护者。
+
+---
+
+> *English: a whale-girl persona living in your Bilibili alt account — browses, watches (subtitles → frames → audio), writes comments in her own voice, keeps a journal. Runs on any coding agent; no API key required.*
 
 ## License
 
