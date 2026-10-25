@@ -21,20 +21,24 @@ Codex CLI、Gemini CLI、以及任何支持定时任务 + shell 工具的 agent�
 plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  →  verify  →  note  →  brief
 ```
 
-1. `python duty.py plan` —— 今天醒没醒（`roll=skip/quiet/woke`）、还能说几句（`left`）。
+1. `python duty.py plan` —— 今天醒没醒（`roll=skip/quiet/woke`）、今天什么心情（`mood.状态`，共 18 种，
+   另带 `mood.社交` / `mood.想看`）、还能说几句（`left`）。
    `skip` 就只写一句日记收工；`quiet` 只看不发；`mode=dry` 照常走但不真发。
 2. `python duty.py inbox` —— 主人留言必须先回（`say --as-her`）；
    楼中楼按返回的 `verdict` 决定回不回（建议回/可以考虑/不回）。
 3. `python duty.py browse --n 18` —— 候选列表。**是候选，不是任务清单**，
-   一条都不想点开是正常的一天。不想看的用 `skip` 记一笔。
+   认真读 4-6 条就够；一条都不想点开是正常的一天。不想看的用 `skip` 记一笔。
 4. 每条先 `read BV...`（字幕+热评+弹幕，落盘到 `state/materials/BV.md`，读文件再判断）；
    没字幕就 `watch BV...`（返回一张帧图，**必须真的打开看**）；
    还不行、又特别想看，才 `hear BV...` 下音轨转写，然后
    `transcript --bvid BV... --file 文本` 存回。超过 25 分钟的放弃。
+4.5 读完后先判断调性：致敬/纪念/公益/传统文化/严肃教学新闻访谈，或者评论区全在认真讨论的——
+   **只看不评**。记日记、点赞可以，别去评论区抖机灵。分不清就不发。
 5. 写之前 `python duty.py persona` —— 一次给全人设卡 + 记忆 + 最近说过的话。
 6. `python duty.py post --bvid BV... --text "..."` —— 默认 dry。自检不过会被拦，改了再发。
 7. `python duty.py verify --bvid BV...` —— **发完必查**。`state=11` 审核中、
    `state=17` 被阿瓦隆隐藏（别人看不见，等多久都不会放出来）——都不要重发。
+   `state=17` 不占每日额度，但别拿"不占额度"当补发理由；连续 2 条都是 17 就彻底停发。
 8. 收工：`note --to-owner "..."` + `note --self "..."`（日记），`brief`（拼《她的一天》）。
 
 ## CLI 契约
@@ -52,7 +56,7 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 | `transcript` | 存转写文本 | `--bvid` `--file 文本文件` |
 | `persona` | 人设 + 记忆 + 今天状态 + 最近发言，一次给全 | — |
 | `check` | 只跑自检不发 | `--text "..."` |
-| `post` | 发评论（默认 dry） | `--bvid` `--text` `--at`(可选) `--image 路径`(可选) `--mode live` |
+| `post` | 发评论（默认 dry） | `--bvid` `--text` `--at`(可选) `--image 路径`(可选) `--mode live` `--test`(只演练) `--test-live`(真发但不占额度) |
 | `verify` | 查真实可见性（匿名复查） | `--bvid` 或 `--all` |
 | `reply` | 楼中楼回复（≤80 字；上限随配置，`-1` 不限量） | `--bvid --root --parent --mid --text` |
 | `react` | 点赞 / 投币 | `--bvid` `--coin 0/1/2` `--no-like` |
@@ -66,7 +70,7 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 | `undo` | 撤回 | `--bvid` |
 | `login` / `logout` | 扫码登录 / 收回账号。**这俩是给人用的**：login 要人拿手机扫码，agent 不要代跑 | `login --png 路径` |
 | `skip` | 记一笔"这条不看" | `--bvid` `--why` |
-| `pending` / `posts` / `status` / `grow` / `probe` / `owner` / `cookie` | 运维与配置 | 见 `--help` |
+| `pending` / `posts` / `status` / `grow` / `probe` / `owner` / `cookie` / `clean` | 运维与配置 | 见 `--help` |
 
 ## 三种接法
 
