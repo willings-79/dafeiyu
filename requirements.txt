@@ -8,9 +8,10 @@ qrcode>=7
 # (the usual cause of CERTIFICATE_VERIFY_FAILED on zh-CN Windows)
 certifi
 
-# curl_cffi -- sends write requests (posting comments) with Chrome's TLS fingerprint.
-# Without it things still run, but comments are far more likely to get
-# shadow-hidden by Avalon (state=17).
+# curl_cffi -- REQUIRED to post comments. It sends write requests with Chrome's
+# TLS fingerprint. Without it `post` refuses to run instead of silently falling
+# back to urllib -- that fallback is exactly what gets comments shadow-hidden
+# by Avalon (they look sent, but nobody else can see them).
 curl_cffi>=0.7
 
 # System tools (not pip): yt-dlp + ffmpeg are needed for `watch` (video frames)

@@ -100,7 +100,7 @@ py -3 tools\make_shortcuts.py    # 桌面建两个鲸鱼娘图标（3.9+ 都行�
 ```bash
 git clone https://github.com/willings-79/dafeiyu.git
 cd dafeiyu
-pip install -r requirements.txt        # qrcode（扫码登录）+ curl_cffi（强烈建议）
+pip install -r requirements.txt        # qrcode（扫码登录）+ curl_cffi（发评论必需）
 # 可选：装 yt-dlp + ffmpeg 才能抽帧看画面、下音轨转写
 pip install yt-dlp
 ```
@@ -180,12 +180,12 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 |---|---|---|
 | **心情** | 每天醒来先掷一次骰子：想出门 / 只想看 / 不想看。这决定她那一天说不说话、说话什么语气 | `state/mood.json` · `budget.skip_prob` |
 | **口味** | 你说"这条我不喜欢"，她记进记忆，下次判断会带上 | `duty.py feel` |
-| **成长** | 每 40 点升一级；Lv2 才解锁楼中楼，Lv3 才解锁发动态 | `state/growth.json` |
+| **成长** | 每 40 点升一级，但等级只记成长、**不锁任何功能**——第一天就能发动态、能回楼中楼 | `state/growth.json` |
 | **记忆** | 她自己写 `state/memory.md`，不是设定卡。想通了加一条，过时了自己划掉 | `duty.py note --memory` |
 | **日记** | 每天写两份：一份给你，一份给自己。后者不加滤镜 | `state/journal/` |
 | **学说话** | 翻同类视频的评论区，学活人怎么接话；学来的先过自检词表，你也能 ban 掉 | `lib/learn.py` |
 | **手不闲着** | 看到真好的是会点赞、投币的——不是留一句话就走 | `duty.py react` |
-| **会发动态** | 不是日报。节日、纪念日，或者哪天跟你聊得特别好、特别堵，才发一条（Lv3 解锁，一周最多两条） | `duty.py dynamic` |
+| **会发动态** | 不是日报。节日、纪念日，或者哪天跟你聊得特别好、特别堵，才发一条（一周最多两条） | `duty.py dynamic` |
 
 ## 两种驱动方式
 
@@ -199,7 +199,7 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 
 不填 `api` 块就完全是原来的 agent 驱动，互不影响。**两条路都能做到零 API 支出**，区别只在于：有 agent 的那条能看到画面、听到声音，纯 API 那条只看字幕。
 
-## 内置的纪律（脚本层，不靠模型自觉）
+## 她自己会踩刹车
 
 - **默认 dry**：`post` 走完整流程、写进账本，但不真发
 - **额度**：一天最多 `budget.cap` 条；同一条视频一辈子只说一次；同一个 UP 一天只碰一次
@@ -247,7 +247,7 @@ python duty.py verify --bvid BV...                   # 发完查真实可见性�
 python duty.py undo --bvid BV...                     # 撤回
 python duty.py reply --bvid --root --parent --mid --text "..."   # 楼中楼（一天 3 条）
 python duty.py react --bvid BV... [--coin 1]         # 点赞 / 投币
-python duty.py dynamic --text "..."                  # 发动态（Lv3，一周 2 条；节日/纪念日/特别想说才发）
+python duty.py dynamic --text "..."                  # 发动态（一周 2 条；节日/纪念日/特别想说才发）
 
 # ── 和她相处
 python duty.py inbox            # 谁回了她、主人有没有留言
@@ -287,7 +287,7 @@ python duty.py clean --dry-run  # 清过期抽帧和音轨（默认留 60 天；
 | `budget.fresh_days` | `14` | 只看几天内发布的 |
 | `reply_cap` | `3` | 每天最多回几条楼中楼；`-1` = 不限量（同一个人一天仍只回一次） |
 | `learn` | `true` | 要不要跟评论区同类学说话；`false` 关掉后 `duty.py learn` 直接跳过 |
-| `dynamic_per_week` / `dynamic_level` | `2` / `3` | 动态：一周上限、解锁等级 |
+| `dynamic_per_week` | `2` | 动态一周上限（等级不再锁功能，Lv 只记成长） |
 | `retention_days` | `60` | 抽帧图和音轨保留几天，超期自动清；`0` = 永不清理。字幕原文和日记不受影响 |
 | `at_owner` / `owner_mid` / `owner_nick` | — | @ 主人：`python duty.py owner --url 空间链接` 自动配。默认不 @，她觉得值得才 @，一天最多一次 |
 
@@ -326,7 +326,7 @@ dafeiyu/
 ├─ config.example.json     配置模板 → 复制成 config.local.json 再填
 ├─ lib/
 │  ├─ bili.py              B站 API：搜索/详情/字幕(wbi)/弹幕(protobuf)/发评论/撤回/指纹补齐
-│  ├─ http_chrome.py       用 Chrome TLS 指纹发"写"请求（curl_cffi，可选依赖）
+│  ├─ http_chrome.py       用 Chrome TLS 指纹发"写"请求（curl_cffi，发评论必需）
 │  ├─ lint.py              发出去之前的自检（hard 拦截 / warn 提醒）
 │  ├─ ads.py               插播广告识别（字幕打分 + 抽帧绕开）
 │  ├─ watch.py             yt-dlp + ffmpeg 抽帧拼图
@@ -356,6 +356,7 @@ dafeiyu/
 | 字幕 0 行 | 该视频没有 AI 字幕。不是凭证问题（已走 wbi 签名 + 多轨取最长） |
 | `watch` 失败 | 没有 yt-dlp / ffmpeg；`read` 不受影响 |
 | 评论被吞 / state=17 | 新号风控严。`cap` 保持 1、别用 `--force`、被连续隐藏就停几天养号 |
+| `post` 报「缺 curl_cffi」 | **这是故意拦的**：urllib 的 TLS 指纹会被阿瓦隆识破，发出去也只有你自己能看见。`pip install curl_cffi` 就好 |
 | `hear` 需要 agent 有语音转写能力 | 没有 AudioTranscribe 之类工具的 agent，可以用 whisper 本地转写，见 AGENT-PROTOCOL.md |
 | 只支持 Windows 的设置页弹窗 | 核心功能全平台可用；设置页用命令行起也一样 |
 

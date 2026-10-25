@@ -733,25 +733,20 @@ def reply_add(aid, text, at_name=None, at_mid=None, root=None, parent=None, pict
         p["gaia_source"] = "main_web"
         p["has_vote_option"] = "true"
 
-    # 给写接口也做 WBI 签名：网页端的评论请求都带 w_rid/wts，
-    # 不带的话风控会把这条当成"非浏览器客户端"，直接丢进阿瓦隆。
+    # 评论接口本身不需要 WBI 签名。浏览器不带 w_rid/wts；之前把签名拼在 query 里，
+    # 但签名是对 body 算的，查询串只有 w_rid/wts 属于"不完整签名"，反而更像异常客户端。
+    path = "/x/v2/reply/add"
     try:
-        sg = sign(dict(p))
-        path = "/x/v2/reply/add?w_rid=%s&wts=%s" % (sg["w_rid"], sg["wts"])
-    except Exception:
-        path = "/x/v2/reply/add"
-    try:
-        # 优先用 Chrome 指纹发：urllib 的 TLS 一眼被认出来，评论会进阿瓦隆
+        # 只用 Chrome TLS 指纹发。没有 curl_cffi 就明确失败，绝不静默退回 urllib——
+        # 那样接口会返回成功，评论却被阿瓦隆隐藏，看起来像"发了却没人看得见"。
         from lib import http_chrome
+        if not http_chrome.HAVE_CFFI:
+            return False, ("缺 curl_cffi，发不了评论——urllib 的 TLS 指纹会被阿瓦隆识破。"
+                           "先 pip install curl_cffi 再试。"), None
         ref = ("https://www.bilibili.com/video/%s" % bvid) if bvid else None
         d = http_chrome.post_form(path, p, cookie=cookie_header(), referer=ref)
-    except Exception:
-        try:
-            d = post_form(path, p)
-        except urllib.error.HTTPError as exc:
-            return False, "HTTP %s" % exc.code, None
-        except Exception as exc:
-            return False, "请求失败：%s" % exc, None
+    except Exception as exc:
+        return False, "Chrome 指纹通道失败：%s" % exc, None
 
     if d.get("code") == 0:
         data = d.get("data") or {}

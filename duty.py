@@ -309,12 +309,26 @@ def mood_state(c):
     return m
 
 
-def posts_today(led):
-    """今天真发出去的条数。dry-run 不占额度——演练不该吃掉她今天的份额。"""
+def attempts_today(led):
+    """今天真实提交过的次数。用于发送间隔和停发判断，不用于额度。
+
+    dry 演练不算；--test-live 是真发但不占额度，所以仍算一次尝试。
+    """
     d = today()
     return [p for p in led["posts"]
             if (p.get("time") or "").startswith(d)
-            and not p.get("undone") and not p.get("dry") and not p.get("test")]
+            and not p.get("undone") and not p.get("dry")
+            and (not p.get("test") or p.get("test_live"))]
+
+
+def posts_today(led):
+    """今天计入额度的评论：只算没有明确被隐藏的。
+
+    dry/test 不占额度；state=17 是阿瓦隆隐藏，别人根本看不见，也不该吃今天的份额。
+    state=11（审核中）和还没 verify 的先算，避免趁没查出来连续刷。
+    """
+    return [p for p in attempts_today(led)
+            if not p.get("test") and p.get("state") != 17]
 
 
 def last_touch_days():
@@ -660,8 +674,10 @@ def cmd_plan(a):
         hint = "今天已经出过门了。除非主人点名，别再发第二条。"
 
     # 连续被阿瓦隆隐藏：先停手，养号比硬发有用
-    recent = [p for p in led["posts"] if not p.get("dry") and not p.get("undone")][-3:]
-    if len(recent) >= 2 and all(p.get("state") == 17 for p in recent):
+    # 最近连续 2 条都被阿瓦隆隐藏：先停手，养号比硬发有用。
+    # 只取时间上最新的两条，别让更早的公开评论把连续隐藏的 streak 冲掉。
+    recent = [p for p in led["posts"] if not p.get("dry") and not p.get("undone")][-2:]
+    if len(recent) == 2 and all(p.get("state") == 17 for p in recent):
         left = 0
         m["cap"] = 0
         hint = ("最近 %d 条评论全被阿瓦隆隐藏（只有账号本人可见）。先停几天：看片、点赞、投币、"
@@ -1479,13 +1495,6 @@ def cmd_dynamic(a):
                     % (len(used), cap)})
         return 1
 
-    g = growth_state()
-    need = int(c.get("dynamic_level", 3))
-    if g["level"] < need and not a.force:
-        out({"ok": False, "msg": "她才 Lv%d，还没到能自己发动态的时候（需要 Lv%d）" % (g["level"], need),
-             "hint": "多评论、多回复，长大一点这个门就开了。"})
-        return 1
-
     text = (a.text or "").strip()
     lr = lint.lint(text)
     if not lr["ok"]:
@@ -1531,10 +1540,11 @@ def cmd_grow(a):
         "mood": {"今天": m.get("roll"), "心情": m.get("mood_text") or ""},
         "owner_unread": len(_unread_owner()),
         "unlocks": {
-            "回楼中楼": g["level"] >= 2,
-            "发动态": g["level"] >= 3,
-            "评论带图": g["level"] >= 4,
+            "回楼中楼": True,
+            "发动态": True,
+            "评论带图": True,
         },
+        "unlock_note": "等级只记成长，不再锁任何功能",
         "milestones": g.get("milestones", [])[-3:],
     })
 
@@ -1579,11 +1589,19 @@ def cmd_post(a):
         out({"ok": False, "msg": "没登录：%s" % who["reason"]})
         return 1
 
-    # 额度
+    # 额度：state=17 的隐藏评论不占额度；连续两条被隐藏仍要停手
     posted = posts_today(led)
-    if len(posted) >= m["cap"] and not a.force and not getattr(a, "test", False):
-        out({"ok": False, "msg": "今天说够了（%d/%d）" % (len(posted), m["cap"]),
-             "hint": "别硬发。明天再来。"})
+    attempts = attempts_today(led)
+    test_dry = bool(getattr(a, "test", False))
+    test_live = bool(getattr(a, "test_live", False))
+    is_test = test_dry or test_live
+    if len(posted) >= m["cap"] and not a.force and not is_test:
+        out({"ok": False, "msg": "今天计入额度的评论已经够了（%d/%d）" % (len(posted), m["cap"]),
+             "hint": "隐藏评论不占额度，但别拿额度当理由硬刷。明天再来。"})
+        return 1
+    if len(attempts) >= 2 and all(p.get("state") == 17 for p in attempts[-2:]) and not a.force:
+        out({"ok": False, "msg": "最近连续 2 条都被阿瓦隆隐藏，先停手养号",
+             "hint": "再发大概率还是 17；看片、点赞、投币、补资料，过几天再试。"})
         return 1
 
     # 同一条视频、同一个 UP
@@ -1592,13 +1610,15 @@ def cmd_post(a):
             out({"ok": False, "msg": "这条已经说过了（%s）" % p.get("time")})
             return 1
 
-    # 间隔
-    if posted:
-        last = datetime.fromisoformat(posted[-1]["time"])
+    # 间隔：按真实提交算，隐藏评论也算一次，别让"不计额度"变成连发
+    if attempts:
+        last = datetime.fromisoformat(attempts[-1]["time"])
         gap = (datetime.now() - last).total_seconds() / 60
-        if gap < c["budget"]["interval_min"] and not a.force:
-            out({"ok": False, "msg": "刚说过 %d 分钟，喘口气（要求 ≥%d 分钟）"
-                 % (gap, c["budget"]["interval_min"])})
+        if gap < c["budget"]["interval_min"]:
+            out({"ok": False,
+                 "msg": "刚说过 %d 分钟，喘口气（要求 ≥%d 分钟）"
+                        % (gap, c["budget"]["interval_min"]),
+                 "hint": "这条安全线 --force 也不跳过；短时间连发是进阿瓦隆的高危动作。"})
             return 1
 
     try:
@@ -1663,15 +1683,22 @@ def cmd_post(a):
             out({"ok": False, "msg": "图传不上去：%s" % msgp})
             return 1
 
-    mode = a.mode or c["mode"]
+    # --test 只演练，绝不调到写接口；--test-live 才真发，但仍不占额度。
+    # B站不认识"本地测试"，任何真发出去的内容都会算进它的风控。
+    mode = "live" if test_live else ("dry" if test_dry else (a.mode or c["mode"]))
     if mode != "live":
-        save(MOOD, dict(m, acted=True, note=(m.get("note") or "") + " dry-run"))
-        _record(led, meta, full, None, dry=True, at=at_used, image=pic)
-        out({"ok": True, "dry": True, "would_send": full, "at": at_used, "at_note": at_note,
+        if not is_test:
+            save(MOOD, dict(m, acted=True, note=(m.get("note") or "") + " dry-run"))
+        _record(led, meta, full, None, dry=True, at=at_used, image=pic, test=is_test)
+        out({"ok": True, "dry": True, "test": is_test, "would_send": full,
+             "at": at_used, "at_note": at_note,
              "image": pic, "lint": lr, "atmosphere": atmosphere,
              "warn": lr["warn"], "tips": lr["tips"],
              "to": {"bvid": bvid, "aid": meta["aid"], "owner": meta["owner"]},
-             "msg": "dry 模式：没真的发。确认语气没问题后，把 config 里 mode 改成 live。"})
+             "msg": ("测试只演练，没发出去，也不占额度。要真发就用 --test-live（不占额度）"
+                     "或正常 post。"
+                     if test_dry else
+                     "dry 模式：没真的发。确认语气没问题后，把 config 里 mode 改成 live。")})
         return 0
 
     ok, msg, rpid = bili.reply_add(meta["aid"], full,
@@ -1687,25 +1714,26 @@ def cmd_post(a):
         out({"ok": False, "msg": msg})
         return 1
 
-    if not getattr(a, "test", False):
+    if not test_dry:
         save(MOOD, dict(m, acted=True))
         growth_add(6, "毒舌", 1, why="发了条评论")
     mood_bump(dm=2, de=-8, why="说了句想说的")
     _record(led, meta, full, rpid, dry=False, at=at_used, image=pic,
-            test=getattr(a, "test", False))
+            test=is_test, test_live=test_live)
     out({"ok": True, "dry": False, "rpid": rpid, "text": full, "at": at_used, "at_note": at_note,
-         "image": pic,
+         "image": pic, "test": is_test, "test_live": test_live,
          "url": "https://www.bilibili.com/video/%s#reply%s" % (bvid, rpid),
-         "atmosphere": atmosphere, "warn": lr["warn"], "msg": msg})
+         "atmosphere": atmosphere, "warn": lr["warn"],
+         "msg": msg + ("（测试真发，不占额度）" if test_live else "")})
 
 
-def _record(led, meta, text, rpid, dry, at=False, image=None, test=False):
+def _record(led, meta, text, rpid, dry, at=False, image=None, test=False, test_live=False):
     led["posts"].append({
         "time": time.strftime("%Y-%m-%d %H:%M:%S"), "bvid": meta["bvid"], "aid": meta["aid"],
         "title": meta["title"], "owner": meta["owner"], "owner_mid": meta["owner_mid"],
         "text": text, "rpid": rpid, "dry": dry, "at": bool(at), "undone": False,
         "image": (image or {}).get("img_src") if image else None,
-        "test": bool(test),
+        "test": bool(test), "test_live": bool(test_live),
     })
     save(LEDGER, led)
 
@@ -2044,7 +2072,10 @@ def main():
     p.add_argument("--text", required=True); p.add_argument("--mode", default=None)
     p.add_argument("--at", action="store_true", help="这条 @ 主人（一天最多一次，默认不加）")
     p.add_argument("--image", default=None, help="带一张图（图片评论）")
-    p.add_argument("--test", action="store_true", help="测试用：不占额度、不进统计")
+    p.add_argument("--test", action="store_true",
+                   help="只演练：走完整流程，但不真发、不占额度")
+    p.add_argument("--test-live", dest="test_live", action="store_true",
+                   help="真发一条测试：不占本地额度，但 B 站会把它算作一次真实提交")
     p.add_argument("--force", action="store_true")
     p = sub.add_parser("image"); p.add_argument("path")
     p = sub.add_parser("react"); p.add_argument("--bvid", required=True)
