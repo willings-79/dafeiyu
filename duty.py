@@ -446,11 +446,11 @@ def cmd_learn(a):
              "msg": "封了，以后不学这句" if n else "记下了，以后不学"})
         return 0
 
-    if not conf().get("learn_enabled", True):
-        out({"ok": False,
+    if not conf().get("learn", conf().get("learn_enabled", True)):
+        out({"ok": True, "skipped": True,
              "msg": "学习功能是关着的（设置页或 config.local.json 里 \"learn\" 设为 false）。"
                     "要开回来改回 true 就行。"})
-        return 1
+        return 0
 
     day = load(os.path.join(DAILY, "%s.json" % today()), {})
     vids = [a.bvid] if a.bvid else [w.get("bvid") for w in (day.get("watched") or [])][-3:]
@@ -523,10 +523,13 @@ def cmd_persona(a):
     out_d["today_watched"] = [{"bvid": w.get("bvid"), "title": w.get("title")}
                               for w in (day.get("watched") or [])][-4:]
 
-    try:
-        import lib.learn as learn
-        out_d["learned"] = learn.brief()
-    except Exception:
+    if c.get("learn", c.get("learn_enabled", True)):
+        try:
+            import lib.learn as learn
+            out_d["learned"] = learn.brief()
+        except Exception:
+            out_d["learned"] = ""
+    else:
         out_d["learned"] = ""
 
     try:

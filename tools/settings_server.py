@@ -137,7 +137,7 @@ def snapshot():
         "negative_keywords": c.get("negative_keywords") or [],
         "budget": c.get("budget") or {},
         "reply_cap": c.get("reply_cap", 3),
-        "learn": bool(c.get("learn_enabled", True)),
+        "learn": bool(c.get("learn", c.get("learn_enabled", True))),
         "schedule": c.get("schedule", ["12:50", "22:20"]),
         "schedule_driver": c.get("schedule_driver", "api"),
         "account": {"login": who.get("login"), "uname": who.get("uname"),
@@ -191,8 +191,8 @@ def save(body):
 
     if body.get("learn") is not None:
         v = bool(body["learn"])
-        if v != bool(c.get("learn_enabled", True)):
-            c["learn_enabled"] = v
+        if v != bool(c.get("learn", c.get("learn_enabled", True))):
+            c["learn"] = v
             changed.append("学习开关 → " + ("开" if v else "关"))
 
     def lines(s):
