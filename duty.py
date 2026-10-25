@@ -1495,6 +1495,13 @@ def cmd_dynamic(a):
                     % (len(used), cap)})
         return 1
 
+    g = growth_state()
+    need = int(c.get("dynamic_level", 3))
+    if g["level"] < need and not a.force:
+        out({"ok": False, "msg": "她才 Lv%d，还没到能自己发动态的时候（需要 Lv%d）" % (g["level"], need),
+             "hint": "多评论、多回复，长大一点这个门就开了。"})
+        return 1
+
     text = (a.text or "").strip()
     lr = lint.lint(text)
     if not lr["ok"]:
@@ -1541,10 +1548,9 @@ def cmd_grow(a):
         "owner_unread": len(_unread_owner()),
         "unlocks": {
             "回楼中楼": True,
-            "发动态": True,
-            "评论带图": True,
+            "发动态": g["level"] >= 3,
+            "评论带图": g["level"] >= 4,
         },
-        "unlock_note": "等级只记成长，不再锁任何功能",
         "milestones": g.get("milestones", [])[-3:],
     })
 

@@ -56,7 +56,7 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 | `verify` | 查真实可见性（匿名复查） | `--bvid` 或 `--all` |
 | `reply` | 楼中楼回复（≤80 字；上限随配置，`-1` 不限量） | `--bvid --root --parent --mid --text` |
 | `react` | 点赞 / 投币 | `--bvid` `--coin 0/1/2` `--no-like` |
-| `dynamic` | 发动态（一周 2 条，不受等级限制） | `--text` `--why` |
+| `dynamic` | 发动态（Lv3，一周 2 条） | `--text` `--why` |
 | `emotes` | 列 B站表情 token | `--search 关键词` |
 | `image` | 传图床拿 `img_src` | `图片路径` |
 | `feel` | 主人口味反馈，写进她的记忆 | `--bvid` `--say like/dislike/skip` `--note` |

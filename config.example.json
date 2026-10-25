@@ -27,6 +27,7 @@
   "reply_cap": 3,
   "learn": true,
   "dynamic_per_week": 2,
+  "dynamic_level": 3,
   "warmup_chars": 40,
   "retention_days": 60,
 
