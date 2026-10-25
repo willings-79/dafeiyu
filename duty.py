@@ -276,8 +276,42 @@ def ledger():
 
 # ---------------------------------------------------------------- 生物钟
 
+VIBES = {
+    "skip": [
+        ("蔫", "今天有点提不起劲，尾巴都不想摆", "不想说话", "随便看看"),
+        ("困", "脑子像泡了水，反应慢半拍", "别找我", "看点短的"),
+        ("烦", "今天耐心很薄，看到烂活想顶两句", "少社交", "不碰争议"),
+        ("躲", "想把自己缩进兜里，谁也别喊", "不想回", "看熟悉的"),
+        ("空", "心里空空的，坐着发一会儿呆也行", "安静", "不用动脑的"),
+    ],
+    "quiet": [
+        ("懒", "只想窝着看点东西，不想动脑", "不说话", "老视频"),
+        ("想独处", "不想解释，看点东西把时间混过去", "只潜水", "评论区别吵"),
+        ("观察", "今天想蹲在评论区看别人怎么说话", "只看", "热评多的"),
+        ("怀旧", "想翻以前看过的 UP，看看旧片", "不插话", "老视频"),
+        ("放空", "脑子空空的，看什么都行，什么都不想接", "少说", "随便"),
+    ],
+    "woke": [
+        ("嘴硬", "今天尾巴有点翘，看什么都想顶一句", "可以接话", "新活"),
+        ("黏人", "想找人说话，但不想先开口", "想被回", "评论多的"),
+        ("好奇", "今天想翻点没看过的东西，越怪越好", "愿意聊", "探索"),
+        ("想吃", "满脑子白饭，看什么都像配菜", "随口聊", "轻松的"),
+        ("心软", "今天容易被打动，看到认真做东西的人会停一下", "温柔", "创作类"),
+        ("想营业", "今天愿意多说两句，想被人接住", "主动", "热评多的"),
+        ("得意", "今天觉得自己挺行，尾巴翘着", "敢接话", "新活"),
+        ("想吃瓜", "想蹲评论区看别人吵什么，但自己不进场", "围观", "热评多的"),
+    ],
+}
+
+
+def pick_vibe(roll):
+    """18 种当日状态：叫什么、什么心情、想不想社交、想看什么。"""
+    key, text, social, focus = random.choice(VIBES.get(roll, VIBES["woke"]))
+    return {"vibe": key, "vibe_text": text, "social": social, "focus": focus}
+
+
 def roll_mood(c, mood, second_try=False):
-    """今天想不想出门。skip / quiet / woke"""
+    """今天想不想出门。skip / quiet / woke；再配一个更细的当日状态。"""
     b = c["budget"]
     skip_p = b["skip_prob"] * (0.5 if second_try else 1.0)
     quiet_p = b["quiet_prob"]
@@ -288,23 +322,33 @@ def roll_mood(c, mood, second_try=False):
         roll = "quiet"
     else:
         roll = "woke"
+    v = pick_vibe(roll)
     return {"date": today(), "roll": roll, "cap": int(b["cap"]), "acted": False,
-            "rolled_at": time.strftime("%H:%M:%S"), "note": ""}
+            "rolled_at": time.strftime("%H:%M:%S"), "note": "",
+            "mood_text": v["vibe_text"], **v}
 
 
 def mood_state(c):
-    """每天一个小心情（想出门 / 只想看 / 不想看），只影响语气，不影响能发几条"""
+    """每天一个行为状态 + 一个更细的生活状态；只影响语气，不影响能发几条"""
     m = load(MOOD, {})
+    changed = False
     if m.get("date") != today():
         m = roll_mood(c, m)
-        m["mood_text"] = m.get("mood_text") or ""
-        save(MOOD, m)
-        log("[mood] %s %s" % (m["date"], m["roll"]))
+        changed = True
+        log("[mood] %s %s %s" % (m["date"], m["roll"], m.get("vibe") or ""))
     else:
         if (not m.get("acted")) and m.get("roll") == "skip" and datetime.now().hour >= 18:
             m = roll_mood(c, m, second_try=True)
-            save(MOOD, m)
-            log("[mood] 晚上改主意 %s" % m["roll"])
+            changed = True
+            log("[mood] 晚上改主意 %s %s" % (m["roll"], m.get("vibe") or ""))
+        if not m.get("vibe"):
+            m.update(pick_vibe(m.get("roll") or "woke"))
+            changed = True
+    if not m.get("mood_text"):
+        m["mood_text"] = m.get("vibe_text") or ""
+        changed = True
+    if changed:
+        save(MOOD, m)
     m["cap"] = int(c["budget"]["cap"])        # 条数以主人设的为准，不再受心情衰减
     return m
 
@@ -712,7 +756,9 @@ def cmd_plan(a):
         "at_target": c.get("owner_nick") or "",
         "at_left_today": max(0, 1 - len(ats_today(led))),
         "level": growth_state()["level"],
-        "mood": {"今天": m.get("roll"), "心情": m.get("mood_text") or ""},
+        "mood": {"今天": m.get("roll"), "状态": m.get("vibe") or "",
+                 "心情": m.get("mood_text") or "",
+                 "社交": m.get("social") or "", "想看": m.get("focus") or ""},
         "owner_unread": len(_unread_owner()),
         "hint": hint,
         "next": ("browse" if left > 0 else "note-only"),
@@ -1544,7 +1590,9 @@ def cmd_grow(a):
         "level": g["level"], "xp": g["xp"],
         "next_level_at": (g["level"]) * 40,
         "traits": g["traits"],
-        "mood": {"今天": m.get("roll"), "心情": m.get("mood_text") or ""},
+        "mood": {"今天": m.get("roll"), "状态": m.get("vibe") or "",
+                 "心情": m.get("mood_text") or "",
+                 "社交": m.get("social") or "", "想看": m.get("focus") or ""},
         "owner_unread": len(_unread_owner()),
         "unlocks": {
             "回楼中楼": True,
