@@ -279,6 +279,7 @@ def save(body):
 
 PAGE = r"""<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>大肥鱼 · 设置</title>
 <style>

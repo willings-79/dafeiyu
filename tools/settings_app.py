@@ -325,6 +325,7 @@ class App(tk.Tk):
         num(2, 0, "两条间隔（分钟）", "interval_min", 45)
         num(2, 1, "播放量下限", "view_floor", 3000)
         num(2, 2, "时长上限（秒）", "dur_max", 1200)
+        num(4, 0, "每天班次数", "shifts_per_day", 2)
 
         tk.Frame(f, bg=LINE, height=1).pack(fill="x", pady=2)
         tk.Label(f, text="说话方式", bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w", pady=(8, 4))
@@ -405,6 +406,7 @@ class App(tk.Tk):
             b["dur_max"] = int(self.vars["dur_max"].get())
             c["reply_cap"] = int(self.vars["reply_cap"].get())
             c["dynamic_per_week"] = int(self.vars["dynamic_per_week"].get())
+            c["shifts_per_day"] = max(1, min(8, int(self.vars["shifts_per_day"].get())))
         except (KeyError, ValueError):
             messagebox.showerror("大肥鱼", "数字项里填的不是数字")
             return

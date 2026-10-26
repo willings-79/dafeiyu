@@ -174,6 +174,11 @@ def main():
     # 1) 今天醒没醒、公开额度还剩多少。quiet 不在这退出——
     # quiet 只是不发评论，片照样看、日记照样写（见下面 4.5 的 quiet 分支）
     plan = _duty("plan")
+    if not ((plan.get("account") or {}).get("login")):
+        print(json.dumps({"ok": False,
+                          "msg": "还没登录：python duty.py login 扫码（小号），或设置页「账号」块扫码"},
+                         ensure_ascii=False))
+        return 1
     if plan.get("roll") == "skip" or not plan.get("left"):
         why = "今天不想看" if plan.get("roll") == "skip" else "今天的评论额度用完了"
         _duty("note", "--self", "%s，写一句真话就收工" % why)

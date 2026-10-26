@@ -30,6 +30,8 @@ from datetime import date, datetime, timedelta
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
+__version__ = "1.0.3"
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -113,15 +115,16 @@ def learning_on(c=None):
 
 
 def gap_limit_sec(c=None):
-    """两条评论的最短间隔（秒）。interval_sec 优先，兼容旧的 interval_min。"""
+    """两条评论的最短间隔（秒）。interval_sec 优先，兼容旧的 interval_min。
+    最低按 5 秒算——间隔是安全线，不许用配置把它拆成 0。"""
     b = (c or conf()).get("budget") or {}
     if "interval_sec" in b and b.get("interval_sec") is not None:
         try:
-            return max(0, int(float(b["interval_sec"])))
+            return max(5, int(float(b["interval_sec"])))
         except (TypeError, ValueError):
             pass
     try:
-        return max(0, int(float(b.get("interval_min", 45)) * 60))
+        return max(5, int(float(b.get("interval_min", 45)) * 60))
     except (TypeError, ValueError):
         return 45 * 60
 
@@ -1770,9 +1773,23 @@ def cmd_post(a):
             out({"ok": False, "msg": "这条已经说过了（%s）" % p.get("time")})
             return 1
 
-    # 间隔：按真实提交算，隐藏评论也算一次，别让"不计额度"变成连发
+    # 间隔：按真实提交算，隐藏评论也算一次，别让"不计额度"变成连发。
+    # 账本里某条时间被改坏时，从最新往回找最近一条"读得出来"的——
+    # 不能因为有坏数据就把整条安全线跳过去；全都读不出来才停下来报账本异常
     if attempts:
-        last = datetime.fromisoformat(attempts[-1]["time"])
+        last = None
+        for p in reversed(attempts):
+            try:
+                last = datetime.fromisoformat(p["time"])
+                break
+            except (ValueError, TypeError, KeyError):
+                continue
+        if last is None:
+            out({"ok": False,
+                 "msg": "账本里最近的提交时间都读不出来（state/ledger.json 可能被改坏了）",
+                 "hint": "先把账本修好再发：备份 state/ledger.json 后对照 posts 里的 time 字段。"
+                         "间隔是安全线，账本异常时不放行。"})
+            return 1
         gap = int((datetime.now() - last).total_seconds())
         limit = gap_limit_sec(c)
         if gap < limit:
@@ -2231,6 +2248,7 @@ def cmd_status(a):
     d = load(os.path.join(DAILY, "%s.json" % today()), {})
     who = bili.whoami()
     out({
+        "version": __version__,
         "mode": c["mode"],
         "account": {"login": who["login"], "uname": who["uname"], "level": who["level"]},
         "roll": m.get("roll"), "cap": m.get("cap"), "acted": m.get("acted"),
@@ -2245,7 +2263,30 @@ def cmd_status(a):
 
 
 def cmd_probe(a):
-    """只用登录态和只读 WBI 搜索自检，绝不调用评论写接口。"""
+    """自检：环境 + 登录态 + 只读 WBI 搜索，绝不调用写接口。报障时把整段输出发出来。"""
+    import platform
+    import shutil
+
+    env = {"version": __version__, "python": platform.python_version(),
+           "executable": sys.executable, "platform": platform.platform(),
+           "root": ROOT}
+    from lib import deps as _deps
+    for mod in ("qrcode", "curl_cffi", "PIL"):
+        env[mod] = _deps.has(mod)
+    for tool in ("yt-dlp", "ffmpeg"):
+        env[tool] = bool(shutil.which(tool))
+    if os.name == "nt":
+        import subprocess
+        try:
+            r = subprocess.run(["schtasks", "/query", "/fo", "csv"], capture_output=True,
+                               encoding="gbk", errors="ignore", timeout=30)
+            env["scheduled_tasks"] = sorted(
+                {ln.split(",")[0].strip('"') for ln in (r.stdout or "").splitlines()
+                 if "dafeiyu-" in ln})[:8]
+        except Exception:
+            env["scheduled_tasks"] = []
+        env["config_exists"] = os.path.exists(os.path.join(ROOT, "config.local.json"))
+
     who = bili.whoami()
     try:
         params = bili.sign({"search_type": "video", "keyword": "大肥鱼",
@@ -2257,9 +2298,95 @@ def cmd_probe(a):
             code, d.get("message") or "")
     except Exception as exc:
         ok, msg = False, "只读 WBI 检查失败：%s" % exc
-    out({"login": who, "probe": {"ok": ok, "msg": msg, "read_only": True},
-         "read": "只验证登录态与只读 WBI 签名；不调用写接口，也不保证评论一定能公开"})
+    out({"env": env, "login": who, "probe": {"ok": ok, "msg": msg, "read_only": True},
+         "read": "只验证环境、登录态与只读 WBI 签名；不调用写接口，也不保证评论一定能公开。"
+                 "报障时请整段贴回。"})
     return 0 if ok else 1
+
+
+def cmd_archive(a):
+    """把超过 N 天的每日运营数据（state/daily）和素材包（state/materials）打包进
+    state/archive/。打包后从工作区移走——都在 zip 里，一条没丢；解压回去随时能看。
+    日记、记忆、账本、聊天永远不碰：那是她记得的东西，不是缓存。"""
+    import zipfile
+    days = int(a.days) if a.days is not None else 90
+    if days < 7:
+        days = 7            # 别让手滑把昨天的东西归档了
+    cutoff = time.time() - days * 86400
+    arch_dir = os.path.join(STATE, "archive")
+    targets = []
+    for sub in ("daily", "materials"):
+        folder = os.path.join(STATE, sub)
+        if not os.path.isdir(folder):
+            continue
+        root_abs = os.path.abspath(STATE)
+        for fn in os.listdir(folder):
+            p = os.path.join(folder, fn)
+            if not os.path.isfile(p):
+                continue
+            # 名字里混进路径分隔符、或解析后跑到 state/ 外面的，一律跳过
+            if fn in (".", "..") or os.path.basename(p) != fn \
+                    or not os.path.abspath(p).startswith(root_abs + os.sep):
+                continue
+            try:
+                if os.path.getmtime(p) < cutoff:
+                    targets.append((sub, fn, p))
+            except OSError:
+                continue
+    if a.list:
+        out({"ok": True, "days": days, "count": len(targets),
+             "files": ["%s/%s" % (s, f) for s, f, _ in targets[:60]],
+             "msg": "以上是会打包的（--list 预览模式，什么都没动）；去掉 --list 真打包"})
+        return 0
+    if not targets:
+        out({"ok": True, "days": days, "count": 0,
+             "msg": "没有超过 %d 天的过期文件，不用归档" % days})
+        return 0
+    os.makedirs(arch_dir, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    zpath = os.path.join(arch_dir, "daily-materials-%s.zip" % stamp)
+    n = 2
+    while os.path.exists(zpath):
+        # 同一秒归档第二次（比如先 90 天、马上又 7 天）也不许覆盖前面的包
+        zpath = os.path.join(arch_dir, "daily-materials-%s-%d.zip" % (stamp, n))
+        n += 1
+
+    # 先写临时文件，验证包完整之后才替换、才删原文件——
+    # 中间任何一步出问题，原文件一个不动
+    tmp = zpath + ".part"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+        for sub, fn, p in targets:
+            z.write(p, "%s/%s" % (sub, fn))
+    try:
+        with zipfile.ZipFile(tmp) as z:
+            bad = z.testzip()
+            if bad is not None:
+                raise ValueError("损坏项 %s" % bad)
+            if len(z.namelist()) != len(targets):
+                raise ValueError("条目数 %d != %d" % (len(z.namelist()), len(targets)))
+    except Exception as exc:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        out({"ok": False, "days": days, "count": len(targets),
+             "msg": "归档包没写完整（%s），一个原文件都没动。再跑一次试试" % exc})
+        return 1
+    os.replace(tmp, zpath)
+
+    moved = 0
+    for _sub, _fn, p in targets:
+        try:
+            os.remove(p)
+            moved += 1
+        except OSError:
+            pass
+    out({"ok": True, "days": days, "archived": len(targets), "moved": moved,
+         "zip": zpath, "zip_mb": round(os.path.getsize(zpath) / 1048576.0, 2),
+         "msg": "%d 个文件打进 %s 并从工作区移走（都在 zip 里，没丢）。"
+                "日记、记忆、账本、聊天没碰；想翻旧的，解压 zip 回对应目录即可"
+                % (len(targets), os.path.basename(zpath))})
+    return 0
 
 
 # ---------------------------------------------------------------- main
@@ -2267,6 +2394,7 @@ def cmd_probe(a):
 def main():
     ensure_dirs()
     ap = argparse.ArgumentParser(description="大肥鱼的一轮")
+    ap.add_argument("--version", action="version", version="dafeiyu " + __version__)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("plan")
@@ -2341,6 +2469,8 @@ def main():
     sub.add_parser("probe")
     p = sub.add_parser("clean"); p.add_argument("--days", type=int, default=None)
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("archive"); p.add_argument("--days", type=int, default=90)
+    p.add_argument("--list", action="store_true", help="只列出会打包的文件，什么都没动")
 
     a = ap.parse_args()
     fn = {
@@ -2348,7 +2478,7 @@ def main():
         "hear": cmd_hear, "transcript": cmd_transcript,
         "post": cmd_post, "undo": cmd_undo, "skip": cmd_skip, "note": cmd_note,
         "touch": cmd_touch, "status": cmd_status, "probe": cmd_probe,
-        "clean": cmd_clean,
+        "clean": cmd_clean, "archive": cmd_archive,
         "owner": cmd_owner, "brief": cmd_brief, "feel": cmd_feel, "verify": cmd_verify,
         "say": cmd_say, "inbox": cmd_inbox, "reply": cmd_reply,
         "emotes": cmd_emotes, "pending": cmd_pending, "image": cmd_image,

@@ -70,13 +70,14 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 | `undo` | 撤回 | `--bvid` |
 | `login` / `logout` | 扫码登录 / 收回账号。**这俩是给人用的**：login 要人拿手机扫码，agent 不要代跑 | `login --png 路径` |
 | `skip` | 记一笔"这条不看" | `--bvid` `--why` |
-| `pending` / `posts` / `status` / `grow` / `probe` / `owner` / `cookie` / `clean` | 运维与配置 | 见 `--help` |
+| `pending` / `posts` / `status` / `grow` / `probe` / `owner` / `cookie` / `clean` / `archive` | 运维与配置 | 见 `--help` |
 
 ## 三种接法
 
 ### A. 有定时任务的 agent（DSH / WorkBuddy / cron 类）
 
 新建定时任务（建议一天两次，如 12:50 / 22:20），内容用 `automation-prompt.txt` 原文。
+到点时机器关着或睡眠，班次就错过了——**不用补跑，下一班照常**；`plan` 每次都会基于当下重新判断额度。
 每次会话她会先跑 `plan`——有可能今天就是不想看，这是特性。
 
 ### B. 无定时任务的 agent（Claude Code / OpenCode 手动档）

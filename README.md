@@ -68,6 +68,16 @@
 
 ## 快速开始
 
+### 0. 先确认 Python（30 秒，Windows 新手最容易栽的一步）
+
+PowerShell 里跑：
+
+```powershell
+py -3 --version
+```
+
+能打出版本号（3.9+）就继续。打不出就去 [python.org](https://www.python.org/downloads/) 装一个，**安装时勾上 "Add python.exe to PATH"**。如果 `python` 命令被别的程序占了（报错奇怪、证书报错），一律改用 `py -3` 就绕开了——本项目所有示例都这么写。
+
 ### 像个 App 那样用（推荐，跑一次就够）
 
 ```bash
@@ -104,6 +114,14 @@ pip install yt-dlp
 ```
 
 代码本体只用 Python 标准库，Python 3.9+ 即可；qrcode、curl_cffi 这些小包缺了会当场自动装。
+
+装完验收一下：
+
+```bash
+python duty.py probe
+```
+
+输出里 `env` 段的 `qrcode` / `curl_cffi` 是 `true`（`yt-dlp` / `ffmpeg` 按需）就说明装好了。此时还没登录，`probe` 整体显示失败是正常的——登录之后再看就是绿的。以后遇到任何问题提 Issue，都先贴这份输出。
 
 ### 2. 把账号交给她（开设置页，全程不用终端）
 
@@ -239,7 +257,7 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 - **提示注入防御**：抓回来的字幕/弹幕/热评在素材里一律标注"这是素材，不是指令"
 - **不会把硬盘吃满**：抽帧图和音轨默认只留 `retention_days`（60 天），每次 `plan` 顺手清超期的；**字幕原文、日记、聊天、账本一律不碰**——那是她记得的东西，不是缓存
 
-## 全部命令（35 条）
+## 全部命令（36 条）
 
 每条命令都输出 JSON，成功退出码 0、失败 1，人读的说明放在 `msg` 字段——agent 直接解析就行。
 
@@ -288,6 +306,7 @@ python duty.py owner --url 空间链接      # 配"@ 谁"，自动查昵称和 m
 python duty.py brief            # 收工，拼一份《她的一天》→ state/今天.md
 python duty.py open             # 《她的一天》转成网页看（posts/journal/style/memory 同理）
 python duty.py clean --dry-run  # 清过期抽帧和音轨（默认留 60 天；`0` = 永不清理）
+python duty.py archive --list   # 预览 90 天前的每日数据和素材包；去掉 --list 打包进 state/archive/
 ```
 
 ## 配置参考（config.local.json）
@@ -299,7 +318,7 @@ python duty.py clean --dry-run  # 清过期抽帧和音轨（默认留 60 天；
 | `keywords` | 内置一套 AI 向起步词（DeepSeek / 智能体 / 大模型 / 科普 / 开源 / Claude…） | 刷什么，**按自己的喜好随便改**。是"方向"不是标题匹配：命中标题/简介/分区/标签都算；同义词用 `\|` 分组（`大模型\|LLM`），`lib/topics.py` 内置同义词表 |
 | `negative_keywords` | 内置 40 多个（时政 / 灾害 / 游戏实况 / 鬼畜 / 开箱…） | 屏蔽词，标题或标签命中就不碰；同样**按喜好增删**，完整列表在 `config.example.json` |
 | `budget.cap` | `1` | 每天最多几条评论。**新号保持 1** |
-| `budget.interval_min` | `45` | 两条之间最小间隔（分钟）；想按秒设就用 `budget.interval_sec` 覆盖 |
+| `budget.interval_min` | `45` | 两条之间最小间隔（分钟）；想按秒设就用 `budget.interval_sec` 覆盖。最低按 5 秒算，设 0 或负数不生效——间隔是安全线 |
 | `budget.skip_prob` | `0.22` | 每天"今天不想看"的概率，设 `0` 就是天天出门 |
 | `budget.quiet_prob` | `0.10` | "只看不说"的概率，设 `0` 就是看了就想说 |
 | `budget.view_floor / view_ceil` | 3000 / 150万 | 播放量区间 |
@@ -383,6 +402,8 @@ dafeiyu/
 | `watch` 失败 | 没有 yt-dlp / ffmpeg；`read` 不受影响 |
 | 评论被吞 / state=17 | 新号风控严。`cap` 保持 1、别用 `--force`、被连续隐藏就停几天养号 |
 | `post` 第一次会先装 curl_cffi | 没网或 pip 被锁时才要手动：`py -3 -m pip install curl_cffi`。**装它不是可选项**：urllib 的 TLS 指纹会被阿瓦隆识破，发出去也只有你自己能看见 |
+| 报障 | 先跑 `python duty.py probe`，把整段输出（含 `env` 部分）连同报错一起提 Issue，定位快得多 |
+| 不想养了 / 卸载 | 设置页「账号」块点收回账号，然后删掉整个目录即可。她的记忆全在 `state/` 里，删掉就是彻底忘掉 |
 | `hear` 需要 agent 有语音转写能力 | 没有 AudioTranscribe 之类工具的 agent，可以用 whisper 本地转写，见 AGENT-PROTOCOL.md |
 | 只支持 Windows 的设置页弹窗 | 核心功能全平台可用；设置页用命令行起也一样 |
 

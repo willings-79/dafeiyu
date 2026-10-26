@@ -42,12 +42,18 @@ def main():
         print("icon not found: %s" % ICO)
         return 1
     cmds = []
+
+    def _ps(s):
+        # PowerShell 单引号串里 ' 要写成 ''——路径里带单引号的人也存在
+        return s.replace("'", "''")
+
     for name, target in SHORTCUTS:
         lnk = os.path.join(DESKTOP, name)
         cmds.append(
             "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%s');"
             "$s.TargetPath='%s';$s.Arguments='\"%s\"';$s.WorkingDirectory='%s';"
-            "$s.IconLocation='%s,0';$s.Save()" % (lnk, PYW, target, ROOT, ICO))
+            "$s.IconLocation='%s,0';$s.Save()"
+            % (_ps(lnk), _ps(PYW), _ps(target), _ps(ROOT), _ps(ICO)))
     r = subprocess.run(["powershell", "-NoProfile", "-Command", "; ".join(cmds)],
                        capture_output=True, text=True)
     ok = True
@@ -58,6 +64,7 @@ def main():
     if not ok and r.stderr:
         print(r.stderr.strip()[-400:])
     print("\n以后日常就是双击桌面图标。值班定时任务见 docs/AGENT-PROTOCOL.md。")
+    print("注意：快捷方式记的是绝对路径——以后把文件夹挪了位置，回来重跑一遍这个脚本就好。")
     return 0 if ok else 1
 
 
