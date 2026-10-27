@@ -11,6 +11,15 @@ import importlib.util
 import os
 import sys
 
+# Windows 上管道输出的默认编码是 cp1252，第一条中文 PASS 就会炸——
+# test_settings 没这问题是因为它导入链上有 duty（duty 顶层 reconfigure 了 stdout）；
+# 这个文件不经过 duty，得自己来
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
