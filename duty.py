@@ -756,6 +756,19 @@ def cmd_plan(a):
                     if not p.get("dry") and not p.get("test") and p.get("state") == 17]
     day_note = load(os.path.join(DAILY, "%s.json" % today()), {})
     diary_today = day_note.get("self") or []
+
+    # 新手期兜底：有真发过、但一直没人 verify 的评论，plan 顺手补查一次——
+    # visible 只有 verify 会写，agent 忘了查她就被永久按在 40 字里；这里补上
+    try:
+        unverified = [p for p in led["posts"]
+                      if not p.get("dry") and not p.get("undone")
+                      and p.get("rpid") and p.get("visible") is None]
+        if unverified:
+            _check_post(unverified[-1])
+            save(LEDGER, led)
+    except Exception:
+        pass          # 这轮查不成下轮再试；一次 plan 至多多一个请求
+
     left = max(0, m["cap"] - len(posted))
     shifts = max(1, int(c.get("shifts_per_day", 2)))
     per_shift = max(1, (m["cap"] + shifts - 1) // shifts)
@@ -1948,6 +1961,15 @@ def cmd_post(a):
     mood_bump(dm=2, de=-8, why="说了句想说的")
     _record(led, meta, full, rpid, dry=False, at=at_used, image=pic,
             test=is_test, test_live=test_live)
+
+    # 发完立刻替 agent 兜一次 verify（章程写了"发完必查"，但这事不能靠自觉：
+    # 新手期看的是 visible 字段，agent 忘了查，她就被永久按在 40 字里还不报错）
+    try:
+        _check_post(led["posts"][-1])
+        save(LEDGER, led)
+    except Exception:
+        pass          # 匿名通道这会儿不通就留给 plan 补查，别让发帖本身报错
+
     out({"ok": True, "dry": False, "rpid": rpid, "text": full, "at": at_used, "at_note": at_note,
          "image": pic, "test": is_test, "test_live": test_live,
          "url": "https://www.bilibili.com/video/%s#reply%s" % (bvid, rpid),
