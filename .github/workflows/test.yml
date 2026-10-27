@@ -16,6 +16,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -m compileall -q duty.py lib tools
       - run: python duty.py --help
+      # 纯逻辑回归：离线、无副作用，硬门槛
+      - run: python tools/test_core.py
       # 设置页回归测试需要联网访问 B 站接口，境外 runner 可能被风控；
       # 编译两步守住底线，这步失败先容忍，裸 windows 上必须过
       - run: python tools/test_settings.py

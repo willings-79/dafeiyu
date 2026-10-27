@@ -1427,7 +1427,7 @@ def cmd_inbox(a):
     for post in reversed(led["posts"]):
         if post.get("dry") or post.get("undone") or not post.get("rpid"):
             continue
-        if post.get("time", "") < (datetime.now() - timedelta(days=7)).isoformat():
+        if post.get("time", "") < (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"):
             continue
         try:
             d = bili.get("/x/v2/reply/reply",

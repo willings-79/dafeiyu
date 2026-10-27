@@ -92,10 +92,14 @@ def load_conf():
 
 
 def save_conf(c):
-    with open(CONF, "w", encoding="utf-8") as f:
-        json.dump(c, f, ensure_ascii=False, indent=2)
+    # 原子写：这文件里存着 SESSDATA，写一半崩溃/断电 = "莫名其妙没登录了"
+    from pathlib import Path
+    conf = Path(CONF)
+    tmp = conf.with_name(conf.name + ".tmp")
+    tmp.write_text(json.dumps(c, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(str(tmp), str(conf))
     try:
-        os.chmod(CONF, 0o600)
+        os.chmod(conf, 0o600)
     except Exception:
         pass
 

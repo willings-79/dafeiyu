@@ -13,6 +13,7 @@ tools/settings_server.py — 大肥鱼的设置页（本机只读自己，不对
 
 import json
 import os
+import re
 import secrets
 import sys
 import threading
@@ -65,12 +66,7 @@ STATE = os.path.join(ROOT, "state")
 
 
 def cfg():
-    c = duty.conf()          # 关键词/屏蔽词/预算的默认值全在 duty.conf 里（用作者原版兜底）
-    b = c.setdefault("budget", {})
-    for k, v in (("cap", 1), ("skip_prob", 0.22), ("quiet_prob", 0.10), ("interval_min", 45),
-                 ("view_floor", 3000), ("view_ceil", 1500000), ("dur_min", 60),
-                 ("dur_max", 1200), ("fresh_days", 14)):
-        b.setdefault(k, v)
+    c = duty.conf()          # 关键词/屏蔽词/预算/班次的默认值全在 duty.conf 里（单一出处，不漂移）
     c.setdefault("reply_cap", 3)
     c.setdefault("schedule", ["12:50", "22:20"])
     c.setdefault("schedule_driver", "api")
@@ -166,7 +162,6 @@ def save(body):
         if owner.isdigit():
             mid = owner
         else:
-            import re
             m = re.search(r"(\d{3,})", owner)
             if m:
                 mid = m.group(1)
@@ -504,7 +499,7 @@ function fill(d){
     : '还没配 @ 对象——就算加了 --at 也不会通知到任何人。';
   const a = d.account || {};
   $('who').innerHTML = a.login
-    ? '<span>账号 <b>' + a.uname + '</b></span><span>等级 <b>Lv' + (a.level ?? '?') + '</b></span>'
+    ? '<span>账号 <b>' + esc(a.uname) + '</b></span><span>等级 <b>Lv' + (a.level ?? '?') + '</b></span>'
       + '<span>今天 <b>' + ({skip:'不想看',quiet:'只看不说',woke:'想出门'}[d.mood?.roll] || '还没定') + '</b></span>'
       + '<span>模式 <b>' + (d.mode === 'live' ? '真发' : '只演练') + '</b></span>'
       + (d.self && d.self.level
@@ -739,7 +734,7 @@ class Handler(SimpleHTTPRequestHandler):
         if u.path in ("/", "/index.html"):
             if not self._authed(q):
                 return self._json({"error": "bad token"}, 403)
-            body = PAGE.replace("__TOKEN__", TOKEN).encode("utf-8")
+            body = PAGE.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store, max-age=0")

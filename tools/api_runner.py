@@ -102,8 +102,35 @@ def _duty(*args):
 
 
 def _extract_json(text):
-    """模型答应只回 JSON，经常裹在 ```json 或废话里。捞最后一个 {...}。"""
-    for cand in reversed(re.findall(r"\{[^{}]*\}", text or "", re.S)):
+    """模型答应只回 JSON，经常裹在 ```json 或废话里。捞最后一个能解析的 {...}。
+
+    按大括号配平扫描（跳过字符串里的花括号和转义引号）——why 里写个 {嵌套}
+    也能抓到，不像 naive 正则 \\{[^{}]*\\} 一遇嵌套就瞎。
+    """
+    s = text or ""
+    cands, depth, start, instr, esc = [], 0, -1, False, False
+    for i, ch in enumerate(s):
+        if instr:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                instr = False
+            continue
+        if ch == '"':
+            instr = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth:
+                depth -= 1
+                if depth == 0 and start >= 0:
+                    cands.append(s[start:i + 1])
+                    start = -1
+    for cand in reversed(cands):
         try:
             return json.loads(cand)
         except Exception:
