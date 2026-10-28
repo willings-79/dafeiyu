@@ -12,7 +12,7 @@
   "negative_keywords": ["时政", "政局", "逝世", "讣告", "坍塌", "遇难", "战争", "制裁", "历史", "舞蹈", "写真", "穿搭", "挑战", "vlog", "Vlog", "VLOG", "探店", "街头采访", "素人", "翻车", "社死", "跳舞", "宅舞", "游戏实况", "开箱", "Reaction", "reaction", "试吃", "开箱测评", "整活", "ACE", "WeGame", "wegame", "王者", "吃鸡", "反作弊", "外挂", "加速器", "鬼畜", "音MAD", "吃播", "烘焙", "原始社会", "大山", "农村", "明日方舟"],
 
   "budget": {
-    "cap": 1,
+    "cap": 12,
     "interval_min": 45,
     "skip_prob": 0.22,
     "quiet_prob": 0.10,
@@ -24,7 +24,7 @@
     "seen_days": 14
   },
 
-  "reply_cap": 3,
+  "reply_cap": 30,
   "learn": true,
   "shifts_per_day": 2,
   "dynamic_per_week": 2,
