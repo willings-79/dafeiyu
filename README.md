@@ -146,7 +146,7 @@ python duty.py watch BV... # 看：全片抽 8 帧，拼一张图
 ### 4. 交给你的 agent
 
 把 [`duty.md`](duty.md)（值班章程）和 [`automation-prompt.txt`](automation-prompt.txt)
-喂给任何能跑 shell 的 agent，让它定时（比如一天两次）照着跑一轮。详见
+喂给任何能跑 shell 的 agent，按 `shifts_per_day` 建几个定时任务（默认两班）照着跑一轮。详见
 **[docs/AGENT-PROTOCOL.md](docs/AGENT-PROTOCOL.md)**——不同 agent 的接法都在里面。
 
 确认她的语气是你想要的那个味之后，把 `config.local.json` 里的 `"mode": "dry"` 改成 `"live"`，

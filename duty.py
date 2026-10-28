@@ -771,7 +771,7 @@ def cmd_plan(a):
 
     left = max(0, m["cap"] - len(posted))
     shifts = max(1, int(c.get("shifts_per_day", 2)))
-    per_shift = max(1, (m["cap"] + shifts - 1) // shifts)
+    per_shift = max(0, (m["cap"] + shifts - 1) // shifts)   # cap=0（禁言）时就该是 0，别骗 agent
     idle = last_touch_days()
     if idle is not None and idle >= 7 and left > 0:
         left = 0

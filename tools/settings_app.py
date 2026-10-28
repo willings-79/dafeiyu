@@ -396,16 +396,18 @@ class App(tk.Tk):
         c = load_conf()
         try:
             b = c.setdefault("budget", {})
-            b["cap"] = int(self.vars["cap"].get())
-            new_iv = int(self.vars["interval_min"].get())
+            # 夹取范围与网页版完全一致——两个入口不许有两种行为
+            b["cap"] = max(1, min(30, int(self.vars["cap"].get())))
+            new_iv = max(15, min(360, int(self.vars["interval_min"].get())))
             if b.get("interval_min") != new_iv:
                 b["interval_min"] = new_iv
                 if "interval_sec" in b:
                     b.pop("interval_sec", None)  # 真的改了分钟才清秒级覆盖；只改别的项不碰它
-            b["view_floor"] = int(self.vars["view_floor"].get())
-            b["dur_max"] = int(self.vars["dur_max"].get())
-            c["reply_cap"] = int(self.vars["reply_cap"].get())
-            c["dynamic_per_week"] = int(self.vars["dynamic_per_week"].get())
+            b["view_floor"] = max(0, min(10000000, int(self.vars["view_floor"].get())))
+            b["dur_max"] = max(60, min(7200, int(self.vars["dur_max"].get())))
+            rc = int(self.vars["reply_cap"].get())
+            c["reply_cap"] = -1 if rc < 0 else min(100, rc)
+            c["dynamic_per_week"] = max(0, min(7, int(self.vars["dynamic_per_week"].get())))
             c["shifts_per_day"] = max(1, min(8, int(self.vars["shifts_per_day"].get())))
         except (KeyError, ValueError):
             messagebox.showerror("大肥鱼", "数字项里填的不是数字")
@@ -415,6 +417,13 @@ class App(tk.Tk):
         c["keywords"] = [x.strip() for x in self.kw.get("1.0", "end").splitlines() if x.strip()]
         c["negative_keywords"] = [x.strip() for x in self.neg.get("1.0", "end").splitlines() if x.strip()]
         bili.save_conf(c)
+        # 输入框回填成真正存进去的值——夹取过了就让用户看见，别让他以为存的是 99
+        for k, v in (("cap", b["cap"]), ("interval_min", b["interval_min"]),
+                     ("view_floor", b["view_floor"]), ("dur_max", b["dur_max"]),
+                     ("reply_cap", c["reply_cap"]),
+                     ("dynamic_per_week", c["dynamic_per_week"]),
+                     ("shifts_per_day", c["shifts_per_day"])):
+            self.vars[k].set(str(v))
         self._refresh_status()
         messagebox.showinfo("大肥鱼", "偏好已保存，下一轮生效。")
 

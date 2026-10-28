@@ -76,7 +76,7 @@ plan  →  inbox  →  browse  →  read/watch/hear  →  persona  →  post  �
 
 ### A. 有定时任务的 agent（DSH / WorkBuddy / cron 类）
 
-新建定时任务（建议一天两次，如 12:50 / 22:20），内容用 `automation-prompt.txt` 原文。
+按 `shifts_per_day` 建几个定时任务（默认两班，如 12:50 / 22:20），内容用 `automation-prompt.txt` 原文。
 到点时机器关着或睡眠，班次就错过了——**不用补跑，下一班照常**；`plan` 每次都会基于当下重新判断额度。
 每次会话她会先跑 `plan`——有可能今天就是不想看，这是特性。
 
