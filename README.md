@@ -321,8 +321,8 @@ python duty.py archive --list   # 预览 90 天前的每日数据和素材包；
 | `budget.interval_min` | `45` | 两条之间最小间隔（分钟）；想按秒设就用 `budget.interval_sec` 覆盖。最低按 5 秒算，设 0 或负数不生效——间隔是安全线 |
 | `budget.skip_prob` | `0.22` | 每天"今天不想看"的概率，设 `0` 就是天天出门 |
 | `budget.quiet_prob` | `0.10` | "只看不说"的概率，设 `0` 就是看了就想说 |
-| `budget.view_floor / view_ceil` | 3000 / 150万 | 播放量区间 |
-| `budget.dur_min / dur_max` | 60 / 1200 | 时长区间（秒） |
+| `budget.view_floor / view_ceil` | 3000 / 150万 | 播放量区间（view_floor 设置页可调；view_ceil 仅 JSON） |
+| `budget.dur_min / dur_max` | 60 / 1200 | 时长区间（秒）（dur_max 设置页可调；dur_min 仅 JSON） |
 | `budget.fresh_days` | `14` | 只看几天内发布的 |
 | `budget.seen_days` | `14` | 多久内看过的不再重复推（"看过"的记忆窗口，过期会重新进池） |
 | `warmup_chars` | `40` | 新手期（还没有一条评论公开可见）单条评论的字数上限；有一条放出来就自动解除 |

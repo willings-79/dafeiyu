@@ -201,6 +201,18 @@ def log(line):
         f.write("%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), line))
 
 
+def quiet_log(tag, exc):
+    """best-effort 例外的一行流水。静默 ≠ 没发生——排障时全在 logs/quiet.log，
+    不然"她怎么一直 40 字"这种事只能靠猜。"""
+    try:
+        ensure_dirs()
+        with open(os.path.join(ROOT, "logs", "quiet.log"), "a", encoding="utf-8") as f:
+            f.write("%s [%s] %s: %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"),
+                                          tag, type(exc).__name__, exc))
+    except Exception:
+        pass
+
+
 def out(obj):
     print(json.dumps(obj, ensure_ascii=False, indent=2))
 
@@ -588,9 +600,9 @@ def cmd_persona(a):
         if card:
             out_d["persona_card"] = persona_mod.render(card)
             out_d["persona_note"] = ("persona_card 来自 persona.local.json（主人亲手改的性格），"
-                                     "和 persona.md 的示例冲突时，以前者为准")
-    except Exception:
-        pass
+                                      "和 persona.md 的示例冲突时，以前者为准")
+    except Exception as exc:
+        quiet_log("persona 合并示例失败", exc)
 
     out_d["how_to_use"] = ("先读完人设，再回答三个问题：①我在这条视频里看见了什么具体的东西 "
                            "②我（本鲸）会有什么反应 ③这句话是说给谁听的（可以是自己）。"
@@ -641,8 +653,8 @@ def _save_login(cookies):
     bili.save_conf(c)
     try:
         bili.ensure_fingerprint()          # 扫码登录的号也要补 buvid3/4 + bili_ticket
-    except Exception:
-        pass
+    except Exception as exc:
+        quiet_log("login 补指纹", exc)
     return bili.whoami()
 
 
@@ -751,8 +763,8 @@ def cmd_plan(a):
         cleaned = {"files": 0, "mb": 0, "errors": [str(exc)]}
     try:
         bili.ensure_fingerprint()
-    except Exception:
-        pass
+    except Exception as exc:
+        quiet_log("plan 补指纹", exc)
     led = ledger()
     m = mood_state(c)
     who = bili.whoami()
@@ -1304,8 +1316,8 @@ def _check_post(target):
         d2 = bili.get("/x/v2/reply/reply",
                       {"oid": target["aid"], "type": 1, "root": rpid, "ps": 1, "pn": 1})
         state = (((d2.get("data") or {}).get("root") or {}).get("state"))
-    except Exception:
-        pass
+    except Exception as exc:
+        quiet_log("verify 查服务端状态", exc)
 
     # 匿名查得到才算真公开：登录态能看到、匿名看不到 = 被阿瓦隆藏着。
     # 匿名通道没查成（网络/风控/限频）时标 None（未知），不能拿登录态的结果装作"公开"。
@@ -1424,8 +1436,8 @@ def chat_history(limit=40):
         for line in open(os.path.join(CHAT, f), encoding="utf-8"):
             try:
                 rows.append(json.loads(line))
-            except Exception:
-                pass
+            except Exception as exc:
+                quiet_log("读流水行", exc)
     return rows[-limit:]
 
 
@@ -1795,8 +1807,8 @@ def cmd_post(a):
     m = mood_state(c)
     try:
         bili.ensure_fingerprint()
-    except Exception:
-        pass
+    except Exception as exc:
+        quiet_log("post 补指纹", exc)
     who = bili.whoami()
     text = (a.text or "").strip()
     bvid = a.bvid
@@ -2155,8 +2167,8 @@ def cmd_feel(a):
     title = ""
     try:
         title = bili.meta(a.bvid)["title"]
-    except Exception:
-        pass
+    except Exception as exc:
+        quiet_log("meta 取标题", exc)
     row = {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "bvid": a.bvid,
            "title": title, "action": a.say, "note": a.note or ""}
     with open(TASTE, "a", encoding="utf-8") as f:
@@ -2268,8 +2280,8 @@ def cmd_brief(a):
         try:
             from lib import view
             view.open_md(path, title="她的一天")
-        except Exception:
-            pass
+        except Exception as exc:
+            quiet_log("打开浏览器页", exc)
     out({"ok": True, "path": path,
          "msg": "写好了。这一份是给你看的，不是给你批的。"})
 
