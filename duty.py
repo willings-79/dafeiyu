@@ -877,6 +877,28 @@ def _fresh(ts, days):
     return ts >= time.time() - days * 86400
 
 
+def _range_hints(b):
+    """浏览区间互相锁死时的人话诊断——browse 0 条时才拿出来，
+    不然用户只会看到"今天没一条想看的"，想不到是配置把自己锁了。"""
+    hints = []
+    try:
+        dur_min = int(b.get("dur_min", 60))
+        dur_max = int(b.get("dur_max", 1200))
+        view_floor = int(b.get("view_floor", 3000))
+        view_ceil = int(b.get("view_ceil", 1500000))
+    except (TypeError, ValueError):
+        return hints
+    if dur_min > dur_max:
+        hints.append("时长区间互斥（dur_min %d > dur_max %d），没有任何视频能过" % (dur_min, dur_max))
+    elif dur_max - dur_min < 60:
+        hints.append("时长区间极窄（%d-%d 秒），几乎筛不中视频" % (dur_min, dur_max))
+    if view_floor > view_ceil:
+        hints.append("播放量区间互斥（view_floor %d > view_ceil %d）" % (view_floor, view_ceil))
+    elif view_floor >= 500000:
+        hints.append("播放量下限 %d 很高，能过门槛的视频会极少" % view_floor)
+    return hints
+
+
 def cmd_browse(a):
     c = conf()
     led = ledger()
@@ -1043,6 +1065,7 @@ def cmd_browse(a):
         "count": len(picked),
         "from_following": following_n,
         "dropped_offtopic": dropped,
+        "range_hints": _range_hints(b) if not picked else [],
         "errors": errs,
         "note": "这些是候选，不是你该看的东西。挑 2-3 条真的想点开的；一条都不想点就 skip。",
         "items": [{

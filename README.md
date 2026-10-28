@@ -324,6 +324,8 @@ python duty.py archive --list   # 预览 90 天前的每日数据和素材包；
 | `budget.view_floor / view_ceil` | 3000 / 150万 | 播放量区间 |
 | `budget.dur_min / dur_max` | 60 / 1200 | 时长区间（秒） |
 | `budget.fresh_days` | `14` | 只看几天内发布的 |
+| `budget.seen_days` | `14` | 多久内看过的不再重复推（"看过"的记忆窗口，过期会重新进池） |
+| `warmup_chars` | `40` | 新手期（还没有一条评论公开可见）单条评论的字数上限；有一条放出来就自动解除 |
 | `reply_cap` | `3` | 每天最多回几条楼中楼，**可设 -1~100**；`-1` = 不限量（同一个人一天仍只回一次） |
 | `shifts_per_day` | `2` | 每天几班；每班最低条数 = ceil(cap ÷ 班次数)，`plan` 会直接给 `shift_min` |
 | `learn` | `true` | 要不要跟评论区同类学说话；`false` 关掉后 `duty.py learn` 直接跳过 |

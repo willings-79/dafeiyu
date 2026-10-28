@@ -309,23 +309,26 @@ class App(tk.Tk):
         for col in range(3):
             grid.columnconfigure(col, weight=1, uniform="pref")
 
-        def num(row, col, label, key, default):
+        def num(row, col, label, key, default, budget=False):
             tk.Label(grid, text=label, bg=CARD, fg=DIM, font=FONT_S).grid(
                 row=row, column=col, sticky="w")
-            v = tk.StringVar(value=str(c.get(key, default)))
+            cur = (c.get("budget") or {}).get(key, default) if budget else c.get(key, default)
+            v = tk.StringVar(value=str(cur))
             e = tk.Entry(grid, textvariable=v, relief="flat", bd=0, font=FONT,
                          highlightthickness=1, highlightbackground=LINE,
                          highlightcolor=ACCENT, insertbackground=TXT)
             e.grid(row=row + 1, column=col, sticky="ew", pady=(3, 14), ipady=4, padx=(0, 12))
             self.vars[key] = v
 
-        num(0, 0, "每天最多几条", "cap", 1)
+        num(0, 0, "每天最多几条", "cap", 1, budget=True)
         num(0, 1, "楼中楼上限(-1不限)", "reply_cap", 3)
         num(0, 2, "一周动态上限", "dynamic_per_week", 2)
-        num(2, 0, "两条间隔（分钟）", "interval_min", 45)
-        num(2, 1, "播放量下限", "view_floor", 3000)
-        num(2, 2, "时长上限（秒）", "dur_max", 1200)
+        num(2, 0, "两条间隔（分钟）", "interval_min", 45, budget=True)
+        num(2, 1, "播放量下限", "view_floor", 3000, budget=True)
+        num(2, 2, "时长上限（秒）", "dur_max", 1200, budget=True)
         num(4, 0, "每天班次数", "shifts_per_day", 2)
+        num(4, 1, "不想出门概率", "skip_prob", 0.22, budget=True)
+        num(4, 2, "只看不说概率", "quiet_prob", 0.10, budget=True)
 
         tk.Frame(f, bg=LINE, height=1).pack(fill="x", pady=2)
         tk.Label(f, text="说话方式", bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w", pady=(8, 4))
@@ -352,6 +355,13 @@ class App(tk.Tk):
                                    command=self._toggle_learn)
         self.learn_btn.pack(side="left", padx=12)
         self._paint_learn()
+
+        self.at_owner_v = tk.BooleanVar(value=bool(c.get("at_owner", True)))
+        arow = tk.Frame(f, bg=CARD)
+        arow.pack(anchor="w", pady=(10, 0))
+        tk.Label(arow, text="评论里 @ 主人", bg=CARD, font=FONT).pack(side="left")
+        tk.Checkbutton(arow, variable=self.at_owner_v, bg=CARD, font=FONT_S,
+                       activebackground=CARD, highlightthickness=0).pack(side="left", padx=12)
 
         tk.Label(f, text="关键词（一行一个）", bg=CARD, fg=DIM, font=FONT_S).pack(anchor="w", pady=(14, 2))
         self.kw = tk.Text(f, height=4, relief="flat", bd=0, font=FONT,
@@ -409,11 +419,15 @@ class App(tk.Tk):
             c["reply_cap"] = -1 if rc < 0 else min(100, rc)
             c["dynamic_per_week"] = max(0, min(7, int(self.vars["dynamic_per_week"].get())))
             c["shifts_per_day"] = max(1, min(8, int(self.vars["shifts_per_day"].get())))
+            # 心情概率：网页版单顶 0.6/0.5，合计超 0.9 会吃掉"想出门"——这里夹单顶并留提示
+            b["skip_prob"] = max(0.0, min(0.6, float(self.vars["skip_prob"].get())))
+            b["quiet_prob"] = max(0.0, min(0.5, float(self.vars["quiet_prob"].get())))
         except (KeyError, ValueError):
             messagebox.showerror("大肥鱼", "数字项里填的不是数字")
             return
         c["mode"] = self.mode_v.get()
         c["learn"] = self.learn_v.get()          # 和网页版/文档统一用 learn，旧 learn_enabled 只读不写
+        c["at_owner"] = bool(self.at_owner_v.get())
         c["keywords"] = [x.strip() for x in self.kw.get("1.0", "end").splitlines() if x.strip()]
         c["negative_keywords"] = [x.strip() for x in self.neg.get("1.0", "end").splitlines() if x.strip()]
         bili.save_conf(c)
@@ -422,7 +436,8 @@ class App(tk.Tk):
                      ("view_floor", b["view_floor"]), ("dur_max", b["dur_max"]),
                      ("reply_cap", c["reply_cap"]),
                      ("dynamic_per_week", c["dynamic_per_week"]),
-                     ("shifts_per_day", c["shifts_per_day"])):
+                     ("shifts_per_day", c["shifts_per_day"]),
+                     ("skip_prob", b["skip_prob"]), ("quiet_prob", b["quiet_prob"])):
             self.vars[k].set(str(v))
         self._refresh_status()
         messagebox.showinfo("大肥鱼", "偏好已保存，下一轮生效。")
