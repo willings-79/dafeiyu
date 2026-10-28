@@ -353,8 +353,18 @@ def pick_vibe(roll):
 def roll_mood(c, mood, second_try=False):
     """今天想不想出门。skip / quiet / woke；再配一个更细的当日状态。"""
     b = c["budget"]
-    skip_p = b["skip_prob"] * (0.5 if second_try else 1.0)
-    quiet_p = b["quiet_prob"]
+    try:
+        skip_p = max(0.0, float(b.get("skip_prob") or 0))
+        quiet_p = max(0.0, float(b.get("quiet_prob") or 0))
+    except (TypeError, ValueError):
+        skip_p, quiet_p = 0.22, 0.10
+    # 两个概率合起来不能吃掉全部：手改 JSON 写成 0.6 + 0.5 的话，
+    # "想出门"的区间就没了，她永远不发评论还一声不吭。压到最多 0.9，至少留 10%。
+    if skip_p + quiet_p > 0.9:
+        scale = 0.9 / (skip_p + quiet_p)
+        skip_p, quiet_p = skip_p * scale, quiet_p * scale
+    if second_try:
+        skip_p *= 0.5
     r = random.random()
     if r < skip_p:
         roll = "skip"
@@ -760,9 +770,12 @@ def cmd_plan(a):
     # 新手期兜底：有真发过、但一直没人 verify 的评论，plan 顺手补查一次——
     # visible 只有 verify 会写，agent 忘了查她就被永久按在 40 字里；这里补上
     try:
+        # 只在距上次查过 30 分钟以上时才重查，避免每轮 plan 都打同一条
+        cool = (datetime.now() - timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
         unverified = [p for p in led["posts"]
                       if not p.get("dry") and not p.get("undone")
-                      and p.get("rpid") and p.get("visible") is None]
+                      and p.get("rpid") and p.get("visible") is None
+                      and (p.get("checked_at") or "") < cool]
         if unverified:
             _check_post(unverified[-1])
             save(LEDGER, led)
@@ -1289,11 +1302,23 @@ def _check_post(target):
     except Exception:
         anon = None
 
+    # 只有"确定能看见 / 确定看不见"才落 visible。
+    # 审核中（state=11）或匿名通道挂了都算"还没定论"，留 None 让 plan 下轮再查——
+    # 发完立刻查大概率还在审核，若这里写成 False，plan 的补查条件（visible is None）
+    # 就再也不会命中，她会永久卡在新手期（限 40 字、不加 @），而且不报错。
+    if anon is None:
+        visible = None
+    elif anon:
+        visible = True
+    elif state in (11, None):
+        visible = None
+    else:
+        visible = False
     target["anon_public"] = anon
-    target["visible"] = (bool(anon) if anon is not None else None)
+    target["visible"] = visible
     target["state"] = state
     target["checked_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
-    return target["visible"], state, listed, anon
+    return visible, state, listed, anon
 
 
 def cmd_verify(a):

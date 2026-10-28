@@ -246,6 +246,20 @@ def save(body):
                 b.pop("interval_sec", None)
                 changed.append("（已清除秒级覆盖 interval_sec）")
 
+    # 两个概率加起来会吃掉"想出门"的份额：≥1 时她永远不出门，界面还不会有提示。
+    # 按比例压到 0.9，至少留 10% 的日子会开口（和 duty.roll_mood 的兜底一致）。
+    try:
+        sp = float(b.get("skip_prob") or 0)
+        qp = float(b.get("quiet_prob") or 0)
+        if sp + qp > 0.9:
+            scale = 0.9 / (sp + qp)
+            b["skip_prob"] = round(sp * scale, 2)
+            b["quiet_prob"] = round(qp * scale, 2)
+            changed.append("两个概率合计超过 0.9，已按比例压到 %s / %s（否则她永远不出门）"
+                           % (b["skip_prob"], b["quiet_prob"]))
+    except (TypeError, ValueError):
+        pass
+
     bili.save_conf(c)
     dw = body.get("dynamic_per_week")
     if dw not in (None, ""):
