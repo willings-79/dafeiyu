@@ -107,11 +107,11 @@ def main():
     call("/api/config", "POST", dict(cur, cap=1))
     code, body = call("/api/config", "POST", dict(cur, cap=99))
     r = json.loads(body)
-    check("cap 超范围被夹到 8", code == 200 and r["ok"] and "cap → 8" in r["msg"], r["msg"])
+    check("cap 超范围被夹到 30", code == 200 and r["ok"] and "cap → 30" in r["msg"], r["msg"])
 
-    code, body = call("/api/config", "POST", dict(cur, reply_cap=99))
+    code, body = call("/api/config", "POST", dict(cur, reply_cap=999))
     r = json.loads(body)
-    check("楼中楼上限被夹到 12", code == 200 and r["ok"] and "12" in r["msg"], r["msg"])
+    check("楼中楼上限被夹到 100", code == 200 and r["ok"] and "100" in r["msg"], r["msg"])
 
     # 还原成测试前的样子——别把用户设的上限改回 1（之前就是这里把她设的值冲掉了）
     call("/api/config", "POST", dict(cur))

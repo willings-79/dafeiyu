@@ -226,7 +226,7 @@ def save(body):
             changed.append("屏蔽词 %d 个" % len(negs))
 
     b = c.setdefault("budget", {})
-    rules = {"cap": (int, 1, 8), "interval_min": (int, 15, 360),
+    rules = {"cap": (int, 1, 30), "interval_min": (int, 15, 360),
              "view_floor": (int, 0, 10000000), "dur_max": (int, 60, 7200),
              "skip_prob": (float, 0, 0.6), "quiet_prob": (float, 0, 0.5)}
     for k, (cast, lo, hi) in rules.items():
@@ -261,7 +261,7 @@ def save(body):
     if rc not in (None, ""):
         try:
             rc = int(float(rc))
-            rc = -1 if rc < 0 else min(12, rc)
+            rc = -1 if rc < 0 else min(100, rc)
             if c.get("reply_cap") != rc:
                 c["reply_cap"] = rc
                 changed.append("楼中楼上限 → %d" % rc)
@@ -406,8 +406,8 @@ textarea{min-height:76px;resize:vertical;line-height:1.6}
 <div class="card">
   <h2>说多少</h2>
   <div class="grid">
-    <div class="item"><label>每天最多几条（1-8）</label><input type="number" id="cap" min="1" max="8" step="1"></div>
-    <div class="item"><label>楼中楼上限（-1=不限量）</label><input type="number" id="replyCap" min="-1" max="12" step="1"></div>
+    <div class="item"><label>每天最多几条（1-30）</label><input type="number" id="cap" min="1" max="30" step="1"></div>
+    <div class="item"><label>楼中楼上限（-1=不限量）</label><input type="number" id="replyCap" min="-1" max="100" step="1"></div>
     <div class="item"><label>每天班次数</label><input type="number" id="shiftsPerDay" min="1" max="8" step="1"><div class="hint">每班最低 = ceil(cap / 班次数)，和剩余 left 取小；cap 或班次改了会自动重算。</div></div>
     <div class="item"><label>一周动态上限（0-7）</label><input type="number" id="dynamicWeek" min="0" max="7" step="1"></div>
     <div class="item"><label>间隔下限（分钟）</label><input type="number" id="interval" min="15" max="360" step="5"></div>

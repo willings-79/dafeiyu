@@ -241,7 +241,7 @@ def conf():
     b = c["budget"]
     b.setdefault("skip_prob", 0.22)
     b.setdefault("quiet_prob", 0.10)
-    b.setdefault("cap", 12)
+    b.setdefault("cap", 1)
     b.setdefault("interval_min", 45)
     c.setdefault("shifts_per_day", 2)        # 每天几班；每班最低按 cap/班次数自动算
     b.setdefault("view_floor", 3000)
@@ -1475,7 +1475,7 @@ def cmd_inbox(a):
             })
 
     replies_today = [x for x in led["replies"] if (x.get("time") or "").startswith(today())]
-    cap = int(conf().get("reply_cap", 30))
+    cap = int(conf().get("reply_cap", 3))
     left = max(0, cap - len(replies_today)) if cap >= 0 else -1
     note = ("先回主人。楼中楼只回问问题和真接得上话的，别辩论、别回同一个人第二次。"
             if items else "没人回她。")
@@ -1494,7 +1494,7 @@ def cmd_reply(a):
     c = conf()
     led = ledger()
     led.setdefault("replies", [])
-    cap = int(c.get("reply_cap", 30))
+    cap = int(c.get("reply_cap", 3))
     used = len([x for x in led["replies"] if (x.get("time") or "").startswith(today())])
     if cap >= 0 and used >= cap and not a.force:
         out({"ok": False, "msg": "今天已经回够了（%d/%d），别在楼里泡着" % (used, cap)})
